@@ -587,12 +587,12 @@ definitions:
       lat:
         $ref: '#/definitions/Latitude'
   Altitude:
-    format: float
-    description: An altitude, in meters, above the WGS84 ellipsoid.
+    format: integer
+    description: An altitude, in centimeters, above the WGS84 ellipsoid.
     type: 
       - number
       - "null"
-    example: 19.5
+    example: 2000 # 20 meters
   GeoPolygon:
     description: |-
       An enclosed area on the earth.
