@@ -84,6 +84,7 @@ paths:
         may lie entirely outside the requested area.
   /identification_service_areas/{id}:
     summary: An Identification Service Area in the DSS.
+    # This is newly added, and required for RMW with version
     get:
       tags:
       - dss
@@ -144,13 +145,10 @@ paths:
         200:
           schema:
             $ref: '#/definitions/PutIdentificationServiceAreaResponse'
-          description: An existing Identification Service Area was updated successfully
+          description: The Identification Service Area was successfully PUT at the given URL
             in the DSS.
-        201:
-          schema:
-            $ref: '#/definitions/PutIdentificationServiceAreaResponse'
-          description: A new Identification Service Area was created successfully
-            in the DSS.
+        # nit: 201 doesn't offer much over 200 when we are removing blind PUT's
+        # Reason: doesn't map to grpc codes so we'd have to add some custom error handling.
         400:
           schema:
             $ref: '#/definitions/ErrorResponse'
@@ -184,7 +182,8 @@ paths:
       description: |-
         Create or update an Identification Service Area.
 
-        The DSS assumes the USS has already added the appropriate retention period to operation end time in `time_end` field before storing it.  Updating `time_start` is not allowed if it is before the current time.
+        The DSS assumes the USS has already added the appropriate retention period to operation end time in `end_time` field before storing it.  Updating `start_time` is not allowed if it is before the current time.
+        This does a full replace, not a partial update. Any put on an existing ISA *must* be accompanied by the correct version identifier.
     delete:
       tags:
       - dss
@@ -224,7 +223,7 @@ paths:
       summary: /dss/identification_service_areas/{id}
       description: Delete an Identification Service Area.  USSs should not delete
         Identification Service Areas before the end of the last managed flight plus
-        the retention period.
+        the retention period. Any delete on an existing ISA *must* be accompanied by the correct version identifier.
       parameters:
       - name: id
         description: UUIDv4 of the Identification Service Area.
@@ -236,7 +235,7 @@ paths:
         in: query
         schema:
           $ref: '#/definitions/Version'
-        required: true
+        required: true # this should previously have not been required, proposing to require this.
   /subscriptions:
     summary: Subscriptions for airspace updates to a volume of interest.
     get:
@@ -348,10 +347,8 @@ paths:
           schema:
             $ref: '#/definitions/PutSubscriptionResponse'
           description: An existing Subscription was updated successfully.
-        201:
-          schema:
-            $ref: '#/definitions/PutSubscriptionResponse'
-          description: A new Subscription was created successfully.
+        # nit: 201 doesn't offer much over 200 when we are removing blind PUT's
+        # Reason: doesn't map to grpc codes so we'd have to add some custom error handling.
         400:
           schema:
             $ref: '#/definitions/ErrorResponse'
@@ -468,12 +465,12 @@ definitions:
     properties:
       spatial_volume:
         $ref: '#/definitions/Volume3D'
-      time_start:
+      start_time:
         format: date-time
         description: Beginning time of this volume.  RFC 3339 format, per OpenAPI
           specification.
         $ref: 'google/protobuf/timestamp.proto#/google.protobuf.Timestamp'
-      time_end:
+      end_time:
         format: date-time
         description: End time of this volume.  RFC 3339 format, per OpenAPI specification.
         $ref: 'google/protobuf/timestamp.proto#/google.protobuf.Timestamp'
@@ -518,10 +515,10 @@ definitions:
     description: State of AreaSubscription which is causing a notification to be
       sent.
     required:
-    - subscription
+    - subscription_id
     type: object
     properties:
-      subscription:
+      subscription_id:
         $ref: '#/definitions/UUIDv4'
       notification_index:
         $ref: '#/definitions/SubscriptionNotificationIndex'
@@ -666,12 +663,12 @@ definitions:
       Identification Service Area in the DSS.
     required:
     - extents
-    - flights_url
+    - data_url
     type: object
     properties:
       extents:
         $ref: '#/definitions/Volume4D'
-      flights_url:
+      data_url:
         $ref: '#/definitions/URL'
       version:
         $ref: '#/definitions/Version'
@@ -705,8 +702,9 @@ definitions:
     properties:
       id:
         $ref: '#/definitions/UUIDv4'
-      callbacks:
-        $ref: '#/definitions/SubscriptionCallbacks'
+      # Nit: Changing callbacks to a single URL simplifies things
+      data_url:
+        $ref: '#/definitions/URL'
       owner:
         description: Assigned by the DSS based on creating client’s ID (via access
           token).  Used for restricting mutation and deletion operations to owner.
@@ -714,11 +712,11 @@ definitions:
         example: myuss
       notification_index:
         $ref: '#/definitions/SubscriptionNotificationIndex'
-      expires:
+      end_time:
         description: If set, this subscription will be automatically removed after
           this time.  RFC 3339 format, per OpenAPI specification.
         $ref: 'google/protobuf/timestamp.proto#/google.protobuf.Timestamp'
-      begins:
+      start_time:
         $ref: 'google/protobuf/timestamp.proto#/google.protobuf.Timestamp'
       version:
         $ref: '#/definitions/Version'
@@ -734,13 +732,13 @@ definitions:
       the DSS.
     required:
     - extents
-    - callbacks
+    - data_url
     type: object
     properties:
       extents:
         $ref: '#/definitions/Volume4D'
-      callbacks:
-        $ref: '#/definitions/SubscriptionCallbacks'
+      data_url:
+        $ref: '#/definitions/URL'
       version:
         $ref: '#/definitions/Version'
   PutSubscriptionResponse:
@@ -764,16 +762,21 @@ definitions:
       must exchange flight information peer-to-peer.
     required:
     - id
-    - flights_url
+    # We need to specify whether the data URL contains the fully qualified path or not.
+    # ie: data_url: foo.example.com/flights/{id}
+    # This is in the spec, so it could be extrapolated from `data_url`: foo.example.com/flights
+    # We use data_url to signify the URL where the data exists. A future `meta_url` can be used to expose details of the entity itself.
+    # This is a small nit that will allow us to make some abstractions, not a large point.
+    - data_url 
     - owner
-    - time_start
-    - time_end
+    - start_time
+    - end_time
     - version
     type: object
     properties:
       id:
         $ref: '#/definitions/UUIDv4'
-      flights_url:
+      data_url:
         $ref: '#/definitions/URL'
       owner:
         description: Assigned by the DSS based on creating client’s ID (via access
@@ -781,11 +784,11 @@ definitions:
           and only requiring EntitySignatures for unowned Entities.
         type: string
         example: myuss
-      time_start:
+      start_time:
         format: date-time
         description: Beginning time of service.  RFC 3339 format, per OpenAPI specification.
         $ref: 'google/protobuf/timestamp.proto#/google.protobuf.Timestamp'
-      time_end:
+      end_time:
         format: date-time
         description: End time of service.  RFC 3339 format, per OpenAPI specification.
         $ref: 'google/protobuf/timestamp.proto#/google.protobuf.Timestamp'
