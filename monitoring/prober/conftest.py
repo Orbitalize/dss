@@ -63,12 +63,12 @@ def session(pytestconfig):
   service_account_json = pytestconfig.getoption('service_account_json')
   oauth_token_endpoint = pytestconfig.getoption('oauth_token_endpoint')
 
-  if service_account_json:
-    credentials = service_account.Credentials.from_service_account_file(
-        service_account_json).with_scopes(['email'])
-    oauth_session = google_requests.AuthorizedSession(credentials)
-  else:
-    oauth_session = requests.Session()
+  # if service_account_json:
+  #   credentials = service_account.Credentials.from_service_account_file(
+  #       service_account_json).with_scopes(['email'])
+  #   oauth_session = google_requests.AuthorizedSession(credentials)
+  # else:
+  oauth_session = requests.Session()
 
   s = PrefixURLSession(pytestconfig.getoption('dss_endpoint'))
   s.mount('http://', AuthAdapter(oauth_token_endpoint, oauth_session))

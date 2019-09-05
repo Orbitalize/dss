@@ -13,12 +13,11 @@ pip install -r requirements.txt
 ```
 
 ### Running the prober
+Run the following command from the project's home directory:
 
 ```shell
-. ./env/bin/activate
-pytest \
+docker run --rm $(docker build -q -f monitoring/prober/Dockerfile monitoring/prober) \
     --oauth-token-endpoint <URL> \
     --service-account-json <FILENAME> \
     --dss-endpoint <URL> \
-    -vv .
 ```

@@ -1,8 +1,15 @@
 GOPATH := $(shell go env GOPATH)
 
 .PHONY: interuss
-interuss:
-	go get ./...
+interuss: go-mod-download
+	go install ./...
+
+.PHONY: interuss
+go-mod-download: go.mod
+	go mod download
+
+go.mod:
+	go mod tidy
 
 .PHONY: format
 format:
