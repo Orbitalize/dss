@@ -2,9 +2,6 @@ package auth
 
 import (
 	"context"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -58,14 +55,9 @@ func NewRSAAuthClient(keyFile string, logger *zap.Logger) (*authClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	pub, _ := pem.Decode(bytes)
-	if pub == nil {
-		return nil, fmt.Errorf("error decoding keyFile")
-	}
-	parsedKey, err := x509.ParsePKIXPublicKey(pub.Bytes)
-	key, ok := parsedKey.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("could not create rsa public key from %s", keyFile)
+	key, err := jwt.ParseRSAPublicKeyFromPEM(bytes)
+	if err != nil {
+		return nil, err
 	}
 	return &authClient{logger: logger, key: key}, nil
 }
