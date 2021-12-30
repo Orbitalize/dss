@@ -5,6 +5,8 @@ on:
     branches:
       - master
       - SUSI-*
+    tags:
+      - v*
 jobs:
   docker-hub-push:
     name: DSS Build and Push to Docker Hub
@@ -18,6 +20,7 @@ jobs:
           echo "Repository: ${{ github.repository }}"
           echo "Branch: ${{ github.ref }}"
           docker images
+
       - name: Checkout
         uses: actions/checkout@v2
 
