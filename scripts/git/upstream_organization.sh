@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 # This script prints the organization of the upstream repository using the remote origin url.
 # It expects a github.com remote defined as origin and the following url formats:
