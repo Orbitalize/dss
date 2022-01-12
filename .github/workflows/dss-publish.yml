@@ -8,12 +8,12 @@ name: Publish DSS image to Docker Registry (on new release tag)
 on:
   push:
     tags:
-      - "interuss/dss/v[0-9]+.[0-9]+.[0-9]+"
+      - "Orbitalize/dss/v[0-9]+.[0-9]+.[0-9]+"
 jobs:
   docker-hub-push:
     name: DSS Build and Push to Docker Hub
     runs-on: ubuntu-latest
-    if: github.repository == 'interuss/dss'
+    if: github.repository == 'Orbitalize/dss'
     steps:
       - name: Job information
         run: |
