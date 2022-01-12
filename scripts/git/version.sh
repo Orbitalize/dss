@@ -10,21 +10,15 @@
 #    - [-dirty] (example: -dirty) when the workspace is not clean.
 # Only versions without [-hash] and without [-dirty] shall be released.
 
-OS=$(uname)
-if [[ "$OS" == "Darwin" ]]; then
-	# OSX uses BSD readlink
-	BASEDIR="$(dirname "$0")"
-else
-	BASEDIR=$(readlink -e "$(dirname "$0")")
-fi
-cd "${BASEDIR}"
-
 if [[ $# == 0 ]]; then
   echo "Usage: $0 <COMPONENT> [--long]"
   echo "Print the component's version number. (ie v0.0.1)"
   echo "[--long]: Print the component's version using the long format including the upstream organization (ie interuss/scd/v0.0.1)."
   exit 1
 fi
+
+# Set working directory
+cd "$(dirname "$0")"
 
 COMPONENT=${1:?"Component must be provided as environment variable. (example: scd, rid, aux, uss_qualifier)"}
 
@@ -33,7 +27,8 @@ if [[ $2 == "--long" ]]; then
   RELEASE_FORMAT=true
 fi
 
-UPSTREAM_ORG=$(./upstream_organization.sh)
+#UPSTREAM_ORG=$(./upstream_organization.sh)
+UPSTREAM_ORG=interuss
 
 # Look for the last tag of the component
 LAST_VERSION_TAG=$(git describe --abbrev=1 --tags --match="${UPSTREAM_ORG}/${COMPONENT}/*" 2> /dev/null)
