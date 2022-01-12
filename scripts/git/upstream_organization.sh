@@ -6,14 +6,8 @@
 # 2. git@github.com/interuss/dss.git
 # 3. https://github.com/interuss/dss.git
 
-OS=$(uname)
-if [[ "$OS" == "Darwin" ]]; then
-	# OSX uses BSD readlink
-	BASEDIR="$(dirname "$0")"
-else
-	BASEDIR=$(readlink -e "$(dirname "$0")")
-fi
-cd "${BASEDIR}"
+# Set working directory
+cd "$(dirname "$0")"
 
 UPSTREAM_REPO=$(git remote get-url origin)
 # Replace `:` by `/` to handle git@github.com:interuss/dss.git remote reference.
