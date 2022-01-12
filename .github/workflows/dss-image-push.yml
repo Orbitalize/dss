@@ -8,12 +8,12 @@ name: DSS Build and Push to Docker Hub
 on:
   push:
     tags:
-      - 'interuss/*/v[0-9]+.[0-9]+.[0-9]+'
+      - "interuss/dss/v[0-9]+.[0-9]+.[0-9]+"
 jobs:
   docker-hub-push:
     name: DSS Build and Push to Docker Hub
     runs-on: ubuntu-latest
-    if: github.repository == 'interuss/dss'
+    if: github.repository == 'Orbitalize/InterUSS-Platform'
     steps:
       - name: Job information
         run: |
