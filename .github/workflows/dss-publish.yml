@@ -13,7 +13,7 @@ jobs:
   docker-hub-push:
     name: DSS Build and Push to Docker Hub
     runs-on: ubuntu-latest
-    if: github.repository == 'Orbitalize/dss'
+    if: github.repository == 'Orbitalize/InterUSS-Platform'
     steps:
       - name: Job information
         run: |
