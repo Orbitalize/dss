@@ -27,8 +27,7 @@ if [[ $2 == "--long" ]]; then
   RELEASE_FORMAT=true
 fi
 
-#UPSTREAM_ORG=$(./upstream_organization.sh)
-UPSTREAM_ORG=interuss
+UPSTREAM_ORG=$(./upstream_organization.sh)
 
 # Look for the last tag of the component
 LAST_VERSION_TAG=$(git describe --abbrev=1 --tags --match="${UPSTREAM_ORG}/${COMPONENT}/*" 2> /dev/null)
