@@ -8,7 +8,7 @@ name: DSS Build and Push to Docker Hub
 on:
   push:
     tags:
-      - "interuss/dss/v[0-9]+.[0-9]+.[0-9]+"
+      - "Orbitalize/dss/v[0-9]+.[0-9]+.[0-9]+"
 jobs:
   docker-hub-push:
     name: DSS Build and Push to Docker Hub
