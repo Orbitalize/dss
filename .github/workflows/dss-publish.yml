@@ -15,7 +15,7 @@ jobs:
     name: DSS Build and Push to Docker Hub
     runs-on: ubuntu-latest
     # To modify to enable the job for forked repository
-    if: github.repository == 'interuss/dss'
+    if: github.repository == 'Orbitalize/InterUSS-Platform'
     steps:
       - name: Job information
         run: |
