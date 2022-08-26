@@ -71,7 +71,9 @@ def run_rid_tests(
             auth_spec=auth_spec, injection_base_url=target.injection_base_url
         )
         uss_injection_harness.submit_test(test_payloads[i], test_id, report.setup)
-        for flight in test_payloads[i].requested_flights:
+        for j, flight in enumerate(test_payloads[i].requested_flights):
+            flight_id = report.setup.injections[i].response['json']['injected_flights'][j]['details_responses'][0]['details']['id']
+            flight.details_responses[0].details.id = flight_id
             injected_flights.append(InjectedFlight(uss=target, flight=flight))
 
     # Create observers
