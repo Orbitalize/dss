@@ -84,11 +84,11 @@ components:
     GeozoneSourceResponse:
       type: object
       required:
-        - result
+        - state
       properties:
-        result:
+        state:
           description: >-
-            The status of the Geozone source and the handling of its data by the USS.
+            The state of the Geozone source and the handling of its data by the USS.
 
             - `Activating`: the USS is processing the request and is currently activating the Geozone data.
 
@@ -321,6 +321,8 @@ paths:
           description: Bearer access token was not provided in Authorization header, token could not be decoded, or token was invalid.
         '403':
           description: The access token was decoded successfully but did not include a scope appropriate to this endpoint.
+        '409':
+          description: The Geozone source already exists.
       operationId: PutGeozoneSource
       summary: Import and activate a Geozone source
       description: Instructs the USS to import and activate the Geozone data from this source.
