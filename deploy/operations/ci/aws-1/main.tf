@@ -8,14 +8,14 @@ terraform {
 
 module "terraform-aws-kubernetes" {
   # See variables.tf for variables description.
-  cluster_name         = var.cluster_name
-  aws_region           = var.aws_region
-  app_hostname         = var.app_hostname
-  crdb_hostname_suffix = var.crdb_hostname_suffix
-  aws_instance_type    = var.aws_instance_type
-  aws_route53_zone_id  = var.aws_route53_zone_id
+  cluster_name                 = var.cluster_name
+  aws_region                   = var.aws_region
+  app_hostname                 = var.app_hostname
+  crdb_hostname_suffix         = var.crdb_hostname_suffix
+  aws_instance_type            = var.aws_instance_type
+  aws_route53_zone_id          = var.aws_route53_zone_id
   aws_iam_permissions_boundary = var.aws_iam_permissions_boundary
-  node_count           = var.node_count
+  node_count                   = var.node_count
 
   source = "../../../infrastructure/dependencies/terraform-aws-kubernetes"
 }
@@ -41,4 +41,11 @@ module "terraform-commons-dss" {
   gateway_cert_name              = module.terraform-aws-kubernetes.app_hostname_cert_arn
 
   source = "../../../infrastructure/dependencies/terraform-commons-dss"
+}
+terraform {
+  backend "s3" {
+    bucket = "interuss-tf-backend-ci"
+    key    = "aws-1"
+    region = "us-east-1"
+  }
 }
