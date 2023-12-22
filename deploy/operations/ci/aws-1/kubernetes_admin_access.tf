@@ -16,7 +16,7 @@ resource "local_file" "aws-auth-config-map" {
             "system:bootstrappers",
             "system:nodes"
           ]
-          rolearn  = module.terraform-aws-kubernetes.iam_role_node_group_arn
+          rolearn  = module.terraform-aws-dss.iam_role_node_group_arn
           username = "system:node:{{EC2PrivateDNSName}}"
         },
         {
@@ -37,5 +37,5 @@ resource "local_file" "aws-auth-config-map" {
     }
   })
 
-  filename   = "${module.terraform-commons-dss.workspace_location}/aws_auth_config_map.yml"
+  filename   = "${module.terraform-aws-dss.workspace_location}/aws_auth_config_map.yml"
 }
