@@ -22,7 +22,6 @@ WORKSPACE_LOCATION="$(terraform output -raw workspace_location)"
 
 cd "${WORKSPACE_LOCATION}"
 ./get-credentials.sh
-echo "Authenticated"
 aws sts get-caller-identity
 
 # Allow access to the cluster to AWS admins

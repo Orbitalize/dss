@@ -33,7 +33,7 @@ jobs:
           role-to-assume: arn:aws:iam::301042233698:role/InterUSSGithubCI
           aws-region: us-east-1
           mask-aws-account-id: true
-          role-duration-seconds: 1800
+          role-duration-seconds: 5400
 
       - name: Caller Id
         run: |
@@ -46,4 +46,4 @@ jobs:
           COMPOSE_PROFILES: aws-1
           AWS_REGION: us-east-1
         run: |
-          docker compose up --exit-code-from ci-aws-1 || docker-compose logs --tail=100 ci-aws-1
+          docker compose up --exit-code-from ci-aws-1
