@@ -20,6 +20,7 @@ RUN go mod download
 # In order to reliably compute the version of the build, all files must be present.
 # This is required to detect a dirty workspace using `scripts/git/version.sh`.
 COPY . /app
+RUN git status
 RUN make interuss
 
 
