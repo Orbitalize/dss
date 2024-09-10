@@ -20,4 +20,4 @@ docker run \
     -v "${BASEDIR}/../../operations":/operations:rw \
     -w /app/utils \
     terraform-variables \
-    /bin/bash -c "python variables.py $@"
+    /bin/bash -c "python variables.py $*"
