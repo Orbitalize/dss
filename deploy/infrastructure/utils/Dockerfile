@@ -1,5 +1,8 @@
 FROM python:3.10
 
-RUN pip3 install python-hcl2
-
 WORKDIR /app
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install python-hcl2
