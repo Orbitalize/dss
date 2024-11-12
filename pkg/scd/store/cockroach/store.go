@@ -2,12 +2,13 @@ package cockroach
 
 import (
 	"context"
+	"github.com/interuss/dss/pkg/datastore"
 
 	"github.com/cockroachdb/cockroach-go/v2/crdb"
 	"github.com/cockroachdb/cockroach-go/v2/crdb/crdbpgxv5"
 	"github.com/coreos/go-semver/semver"
-	"github.com/interuss/dss/pkg/cockroach"
-	"github.com/interuss/dss/pkg/cockroach/flags"
+	"github.com/interuss/dss/pkg/datastore/cockroach"
+	"github.com/interuss/dss/pkg/datastore/cockroach/flags"
 	"github.com/interuss/dss/pkg/scd/repos"
 	dsssql "github.com/interuss/dss/pkg/sql"
 	"github.com/interuss/stacktrace"
@@ -62,7 +63,7 @@ func (s *Store) CheckCurrentMajorSchemaVersion(ctx context.Context) error {
 	if err != nil {
 		return stacktrace.Propagate(err, "Failed to get database schema version for strategic conflict detection")
 	}
-	if vs == cockroach.UnknownVersion {
+	if vs == datastore.UnknownVersion {
 		return stacktrace.NewError("Strategic conflict detection database has not been bootstrapped with Schema Manager, Please check https://github.com/interuss/dss/tree/master/build#upgrading-database-schemas")
 	}
 
