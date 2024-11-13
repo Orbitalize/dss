@@ -43,27 +43,8 @@ func parseIntOrDefault(port string, defaultPort int64) int64 {
 	return p
 }
 
-// ConnectParametersFromMap constructs a ConnectParameters instance from m.
-func ConnectParametersFromMap(m map[string]string) ConnectParameters {
-	return ConnectParameters{
-		ApplicationName: m["application_name"],
-		DBName:          m["db_name"],
-		Host:            m["host"],
-		Port:            int(parseIntOrDefault(m["port"], 0)),
-		Credentials: Credentials{
-			Username: m["user"],
-		},
-		SSL: SSL{
-			Mode: m["ssl_mode"],
-			Dir:  m["ssl_dir"],
-		},
-		MaxOpenConns:       int(parseIntOrDefault(m["max_open_conns"], 4)),
-		MaxConnIdleSeconds: int(parseIntOrDefault(m["max_conn_idle_secs"], 40)),
-	}
-}
-
 // formatDSN constructs a DSN string from a key value map.
-func FormatDSN(dsnMap map[string]string) string {
+func formatDSN(dsnMap map[string]string) string {
 	d := make([]string, 0)
 	for key, value := range dsnMap {
 		if value != "" {
@@ -113,7 +94,7 @@ func (cp ConnectParameters) BuildDSN() (string, error) {
 	dsnMap["pool_max_conns"] = fmt.Sprintf("%d", cp.MaxOpenConns)
 
 	if sslMode == "disable" {
-		return FormatDSN(dsnMap), nil
+		return formatDSN(dsnMap), nil
 	}
 
 	dir := cp.SSL.Dir
@@ -124,5 +105,5 @@ func (cp ConnectParameters) BuildDSN() (string, error) {
 	dsnMap["sslcert"] = fmt.Sprintf("%s/client.%s.crt", dir, u)
 	dsnMap["sslkey"] = fmt.Sprintf("%s/client.%s.key", dir, u)
 
-	return FormatDSN(dsnMap), nil
+	return formatDSN(dsnMap), nil
 }
