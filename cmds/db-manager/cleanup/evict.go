@@ -3,11 +3,11 @@ package cleanup
 import (
 	"context"
 	"fmt"
+	"github.com/interuss/dss/pkg/datastore"
 	"log"
 	"time"
 
-	"github.com/interuss/dss/pkg/datastore/cockroach"
-	crdbflags "github.com/interuss/dss/pkg/datastore/cockroach/flags"
+	crdbflags "github.com/interuss/dss/pkg/datastore/flags"
 	dssmodels "github.com/interuss/dss/pkg/models"
 	scdmodels "github.com/interuss/dss/pkg/scd/models"
 	"github.com/interuss/dss/pkg/scd/repos"
@@ -102,7 +102,7 @@ func getSCDStore(ctx context.Context) (*scdc.Store, error) {
 	connectParameters := crdbflags.ConnectParameters()
 	connectParameters.ApplicationName = "db-manager"
 	connectParameters.DBName = scdc.DatabaseName
-	scdCrdb, err := cockroach.Dial(ctx, connectParameters)
+	scdCrdb, err := datastore.Dial(ctx, connectParameters)
 	if err != nil {
 		logParams := connectParameters
 		logParams.Credentials.Password = "[REDACTED]"

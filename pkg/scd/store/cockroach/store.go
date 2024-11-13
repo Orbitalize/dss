@@ -7,8 +7,7 @@ import (
 	"github.com/cockroachdb/cockroach-go/v2/crdb"
 	"github.com/cockroachdb/cockroach-go/v2/crdb/crdbpgxv5"
 	"github.com/coreos/go-semver/semver"
-	"github.com/interuss/dss/pkg/datastore/cockroach"
-	"github.com/interuss/dss/pkg/datastore/cockroach/flags"
+	"github.com/interuss/dss/pkg/datastore/flags"
 	"github.com/interuss/dss/pkg/scd/repos"
 	dsssql "github.com/interuss/dss/pkg/sql"
 	"github.com/interuss/stacktrace"
@@ -39,12 +38,12 @@ type repo struct {
 // Store is an implementation of an scd.Store using
 // a CockroachDB database.
 type Store struct {
-	db    *cockroach.DB
+	db    *datastore.Datastore
 	clock clockwork.Clock
 }
 
 // NewStore returns a Store instance connected to a cockroach instance via db.
-func NewStore(ctx context.Context, db *cockroach.DB) (*Store, error) {
+func NewStore(ctx context.Context, db *datastore.Datastore) (*Store, error) {
 	store := &Store{
 		db:    db,
 		clock: DefaultClock,
@@ -102,5 +101,5 @@ func (s *Store) Close() error {
 // GetVersion returns the Version string for the Database.
 // If the DB was is not bootstrapped using the schema manager we throw and error
 func (s *Store) GetVersion(ctx context.Context) (*semver.Version, error) {
-	return s.db.GetVersion(ctx, DatabaseName)
+	return s.db.DB.GetSchemaVersion(ctx, DatabaseName)
 }
