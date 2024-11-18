@@ -10,13 +10,15 @@ import (
 )
 
 type Datastore struct {
+	Database
 	Version *Version
-	DB      Database
 	Pool    *pgxpool.Pool
 }
 
 type Database interface {
 	GetSchemaVersion(ctx context.Context, dbName string) (*semver.Version, error)
+	DatabaseExists(ctx context.Context, name string) (bool, error)
+	CreateDatabase(ctx context.Context, name string) error
 }
 
 var UnknownVersion = &semver.Version{}
@@ -27,12 +29,9 @@ func NewDatastore(ctx context.Context, pool *pgxpool.Pool) (*Datastore, error) {
 		return nil, err
 	}
 
-	if version.IsCockroachDB() {
-		return &Datastore{Version: version, Pool: pool, DB: &Cockroach{Pool: pool}}, nil
+	if version.IsCockroachDB() || version.IsYugabyte() {
+		return &Datastore{Version: version, Pool: pool}, nil
 	}
-	//if version.IsYugabyte() {
-	//return &Datastore{Version: version, Pool: pool, DB: &Yugabyte{Pool: pool}}, nil
-	//}
 	return nil, fmt.Errorf("%s is not implemented yet", version.dsName)
 }
 
@@ -78,4 +77,76 @@ func fetchVersion(ctx context.Context, pool *pgxpool.Pool) (*Version, error) {
 	}
 
 	return VersionFromString(fullVersion)
+}
+
+func (ds *Datastore) CreateDatabase(ctx context.Context, dbName string) error {
+	createDB := fmt.Sprintf("CREATE DATABASE %s", dbName)
+	if _, err := ds.Pool.Exec(ctx, createDB); err != nil {
+		return fmt.Errorf("failed to create new database %s: %v", dbName, err)
+	}
+	return nil
+}
+
+func (ds *Datastore) DatabaseExists(ctx context.Context, dbName string) (bool, error) {
+	const checkDbQuery = `
+		SELECT EXISTS (
+			SELECT * FROM pg_database WHERE datname = $1
+		)`
+
+	var exists bool
+	if err := ds.Pool.QueryRow(ctx, checkDbQuery, dbName).Scan(&exists); err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+// GetSchemaVersion returns the Schema Version of the requested DB Name
+func (ds *Datastore) GetSchemaVersion(ctx context.Context, dbName string) (*semver.Version, error) {
+	if dbName == "" {
+		return nil, stacktrace.NewError("GetSchemaVersion was provided with an empty database name")
+	}
+	if ds.Version.IsYugabyte() && dbName != ds.Pool.Config().ConnConfig.Database {
+		return nil, stacktrace.NewError("Yugabyte do not support switching databases with the same connection. Unable to retrieve schema version for database %s while connected to %s.", dbName, ds.Pool.Config().ConnConfig.Database)
+	}
+	var (
+		checkTableQuery = fmt.Sprintf(`
+      SELECT EXISTS (
+        SELECT
+          *
+        FROM
+          %s.information_schema.tables
+        WHERE
+          table_name = 'schema_versions'
+        AND
+          table_catalog = $1
+      )`, dbName)
+		exists          bool
+		getVersionQuery = `
+      SELECT
+        schema_version
+      FROM
+        schema_versions
+      WHERE
+        onerow_enforcer = TRUE`
+	)
+
+	if err := ds.Pool.QueryRow(ctx, checkTableQuery, dbName).Scan(&exists); err != nil {
+		return nil, stacktrace.Propagate(err, "Error scanning table listing row")
+	}
+
+	if !exists {
+		// Database has not been bootstrapped using DB Schema Manager
+		return UnknownVersion, nil
+	}
+
+	var dbVersion string
+	if err := ds.Pool.QueryRow(ctx, getVersionQuery).Scan(&dbVersion); err != nil {
+		return nil, stacktrace.Propagate(err, "Error scanning version row")
+	}
+	if len(dbVersion) > 0 && dbVersion[0] == 'v' {
+		dbVersion = dbVersion[1:]
+	}
+
+	return semver.NewVersion(dbVersion)
 }

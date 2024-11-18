@@ -101,5 +101,5 @@ func (s *Store) Close() error {
 // GetVersion returns the Version string for the Database.
 // If the DB was is not bootstrapped using the schema manager we throw and error
 func (s *Store) GetVersion(ctx context.Context) (*semver.Version, error) {
-	return s.db.DB.GetSchemaVersion(ctx, DatabaseName)
+	return s.db.GetSchemaVersion(ctx, DatabaseName)
 }
