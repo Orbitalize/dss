@@ -112,6 +112,7 @@ services:
       interval: 3m
       start_period: 30s
       start_interval: 5s
+    restart: on-failure:30
 
   local-dss-dummy-oauth:
     build:
