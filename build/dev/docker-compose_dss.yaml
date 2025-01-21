@@ -36,6 +36,11 @@ services:
     networks:
       - dss_sandbox_default_network
     profiles: ["with-yugabyte"]
+    healthcheck:
+      test: ["CMD", "/home/yugabyte/postgres/bin/pg_isready", "-h", "local-dss-ybdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   local-dss-rid-bootstrapper-ybdb:
     build:
