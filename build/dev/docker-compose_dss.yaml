@@ -105,6 +105,12 @@ services:
         condition: service_completed_successfully
       local-dss-scd-bootstrapper:
         condition: service_completed_successfully
+      local-dss-rid-bootstrapper-ybdb:
+        condition: service_completed_successfully
+        required: false
+      local-dss-scd-bootstrapper-ybdb:
+        condition: service_completed_successfully
+        required: false
     networks:
       - dss_sandbox_default_network
     healthcheck:
@@ -112,7 +118,7 @@ services:
       interval: 3m
       start_period: 30s
       start_interval: 5s
-    restart: on-failure:30
+    profiles: ["", "with-yugabyte"]
 
   local-dss-dummy-oauth:
     build:
