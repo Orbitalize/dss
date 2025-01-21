@@ -154,7 +154,11 @@ qualify-locally:
 
 .PHONY: collect-local-logs
 collect-local-logs:
-	docker logs dss_sandbox-local-dss-core-service-1 2> core-service-for-testing.log
+	docker logs dss_sandbox-local-dss-scd-bootstrapper-ybdb-1 2> core-service-for-testing.log
+	docker logs dss_sandbox-local-dss-rid-bootstrapper-ybdb-1 2>> core-service-for-testing.log
+	docker logs dss_sandbox-local-dss-ybdb-1 2>> core-service-for-testing.log
+	docker logs dss_sandbox-local-dss-core-service-1 2>> core-service-for-testing.log
+
 
 .PHONY: stop-locally
 stop-locally:
