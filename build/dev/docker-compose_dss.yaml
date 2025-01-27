@@ -38,7 +38,7 @@ services:
     profiles: ["with-yugabyte"]
     healthcheck:
       test: ["CMD", "/home/yugabyte/postgres/bin/pg_isready", "-h", "local-dss-ybdb"]
-      interval: 10s
+      interval: 2s
       timeout: 5s
       retries: 10
 
@@ -49,7 +49,7 @@ services:
     image: interuss-local/dss
     command: /usr/bin/db-manager migrate --schemas_dir=/db-schemas/yugabyte/rid --db_version "latest" --cockroach_host local-dss-ybdb --cockroach_user yugabyte --cockroach_port 5433
     depends_on:
-      local-dss-crdb:
+      local-dss-ybdb:
         condition: service_healthy
     networks:
       - dss_sandbox_default_network
@@ -62,7 +62,7 @@ services:
     image: interuss-local/dss
     entrypoint: /usr/bin/db-manager migrate --schemas_dir=/db-schemas/yugabyte/scd --db_version "latest" --cockroach_host local-dss-ybdb --cockroach_user yugabyte --cockroach_port 5433
     depends_on:
-      local-dss-crdb:
+      local-dss-ybdb:
         condition: service_healthy
     networks:
       - dss_sandbox_default_network
