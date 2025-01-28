@@ -38,7 +38,7 @@ services:
     profiles: ["with-yugabyte"]
     healthcheck:
       test: ["CMD", "/home/yugabyte/postgres/bin/pg_isready", "-h", "local-dss-ybdb"]
-      interval: 2s
+      interval: 5s
       timeout: 5s
       retries: 10
 
