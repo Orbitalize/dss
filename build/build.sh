@@ -36,7 +36,13 @@ else
   echo "Pushing docker image ${DOCKER_URL}/dss:${VERSION}..."
   docker image push "${DOCKER_URL}/dss:${VERSION}"
 
-  echo "Built and pushed docker image ${DOCKER_URL}/dss:${VERSION}"
+  echo "Signing docker image ${DOCKER_URL}/dss:${VERSION}..."
+  cosign sign --yes "${DOCKER_URL}/dss:${VERSION}"
+
+  echo "Verifying signature of docker image ${DOCKER_URL}/dss:${VERSION}..."
+  cosign verify "${DOCKER_URL}/dss:${VERSION}"
+
+  echo "Built, pushed and signed docker image ${DOCKER_URL}/dss:${VERSION}"
 
   if [[ "${DOCKER_UPDATE_LATEST}" == "true" ]]; then
 
@@ -44,10 +50,15 @@ else
     docker tag "${DOCKER_URL}/dss:${VERSION}" "${DOCKER_URL}/dss:${LATEST_TAG}"
 
     echo "Pushing docker image ${DOCKER_URL}/dss:${LATEST_TAG}..."
-
     docker image push "${DOCKER_URL}/dss:${LATEST_TAG}"
 
-    echo "Built and pushed docker image ${DOCKER_URL}/dss:${LATEST_TAG}"
+    echo "Signing docker image ${DOCKER_URL}/dss:${LATEST_TAG}..."
+    cosign sign --yes "${DOCKER_URL}/dss:${LATEST_TAG}"
+
+    echo "Verifying signature of docker image ${DOCKER_URL}/dss:${LATEST_TAG}..."
+    cosign verify "${DOCKER_URL}/dss:${LATEST_TAG}"
+
+    echo "Built, pushed and signed docker image ${DOCKER_URL}/dss:${LATEST_TAG}"
 
   fi
 
