@@ -3,8 +3,11 @@ from datetime import datetime, timedelta, UTC
 import time
 import logging
 
+from evict_helper import EvictHelper
+from query_helper import QueryHelper
 
-def test_rid_subscription(qh, eh):
+
+def test_rid_subscription(qh: QueryHelper, eh: EvictHelper):
     logger = logging.getLogger("test_rid_subscription")
 
     logger.info("📋 RID Subscriptions test")
@@ -18,7 +21,7 @@ def test_rid_subscription(qh, eh):
         logger.error("❌ Unable to create subscription")
         sys.exit(1)
 
-    sub_id = sub["subscription"]["id"]
+    sub_id: str = str(sub["subscription"]["id"])
 
     logger.debug("Check that subscription exists")
     if not qh.get_rid_subscription(sub_id):
@@ -33,8 +36,8 @@ def test_rid_subscription(qh, eh):
         logger.error("❌ Test subscription shall still be present since not expired")
         sys.exit(1)
 
-    logger.debug("Waiting 3s so the subscription expire")
-    sys.stdout.flush()
+    logger.debug("Waiting 3s so the subscription expires")
+    _ = sys.stdout.flush()
     time.sleep(3)
 
     logger.debug("Evicting subscriptions older than 1s in dry mode")
@@ -43,7 +46,7 @@ def test_rid_subscription(qh, eh):
     logger.debug("Check that subscription still exists")
     if not qh.get_rid_subscription(sub_id):
         logger.error(
-            "❌ Test subscription shall still be present delete was set to false"
+            "❌ Test subscription shall still be present since delete was set to false"
         )
         sys.exit(1)
 

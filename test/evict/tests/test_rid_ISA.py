@@ -3,8 +3,11 @@ from datetime import datetime, timedelta, UTC
 import time
 import logging
 
+from evict_helper import EvictHelper
+from query_helper import QueryHelper
 
-def test_rid_ISA(qh, eh):
+
+def test_rid_ISA(qh: QueryHelper, eh: EvictHelper):
     logger = logging.getLogger("test_rid_ISA")
 
     logger.info("📋 RID ISA test")
@@ -18,7 +21,7 @@ def test_rid_ISA(qh, eh):
         logger.error("❌ Unable to create ISA")
         sys.exit(1)
 
-    ISA_id = sub["service_area"]["id"]
+    ISA_id : str= str(sub["service_area"]["id"])
 
     logger.debug("Check that ISA exists")
     if not qh.get_rid_ISA(ISA_id):
@@ -33,8 +36,8 @@ def test_rid_ISA(qh, eh):
         logger.error("❌ Test ISA shall still be present since not expired")
         sys.exit(1)
 
-    logger.debug("Waiting 3s so the ISA expire")
-    sys.stdout.flush()
+    logger.debug("Waiting 3s so the ISA expires")
+    _ = sys.stdout.flush()
     time.sleep(3)
 
     logger.debug("Evicting subscriptions older than 1s in dry mode")
@@ -42,7 +45,7 @@ def test_rid_ISA(qh, eh):
 
     logger.debug("Check that ISA still exists")
     if not qh.get_rid_ISA(ISA_id):
-        logger.error("❌ Test ISA shall still be present delete was set to false")
+        logger.error("❌ Test ISA shall still be present since delete was set to false")
         sys.exit(1)
 
     logger.debug("Evicting subscriptions older than 1s")

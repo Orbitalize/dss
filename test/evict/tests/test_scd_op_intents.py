@@ -3,8 +3,11 @@ from datetime import datetime, timedelta, UTC
 import time
 import logging
 
+from evict_helper import EvictHelper
+from query_helper import QueryHelper
 
-def test_scd_op_intents(qh, eh):
+
+def test_scd_op_intents(qh: QueryHelper, eh: EvictHelper):
     logger = logging.getLogger("test_scd_op_intents")
 
     logger.info("📋 Operational intents test")
@@ -18,7 +21,7 @@ def test_scd_op_intents(qh, eh):
         logger.error("❌ Unable to create operational intent")
         sys.exit(1)
 
-    op_intent_id = op_intent["operational_intent_reference"]["id"]
+    op_intent_id: str = str(op_intent["operational_intent_reference"]["id"])
 
     logger.debug("Check that operational intent exists")
     if not qh.get_scd_op_intent(op_intent_id):
@@ -35,8 +38,8 @@ def test_scd_op_intents(qh, eh):
         )
         sys.exit(1)
 
-    logger.debug("Waiting 3s so the operational intent expire")
-    sys.stdout.flush()
+    logger.debug("Waiting 3s so the operational intent expires")
+    _ = sys.stdout.flush()
     time.sleep(3)
 
     logger.debug("Evicting operational intents older than 1s in dry mode")
@@ -45,7 +48,7 @@ def test_scd_op_intents(qh, eh):
     logger.debug("Check that operational intent still exists")
     if not qh.get_scd_op_intent(op_intent_id):
         logger.error(
-            "❌ Test operational intent shall still be present delete was set to false"
+            "❌ Test operational intent shall still be present since delete was set to false"
         )
         sys.exit(1)
 

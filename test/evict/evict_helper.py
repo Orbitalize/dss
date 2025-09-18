@@ -6,18 +6,18 @@ import os
 
 class EvictHelper:
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
+        self.logger : logging.Logger = logging.getLogger(__name__)
 
     def run_evict(
         self,
-        scd_oir=False,
-        scd_sub=False,
-        rid_isa=False,
-        rid_sub=False,
-        scd_ttl=None,
-        rid_ttl=None,
-        locality="local_dev",
-        delete=False,
+        scd_oir: bool = False,
+        scd_sub: bool = False,
+        rid_isa: bool = False,
+        rid_sub: bool = False,
+        scd_ttl: str | None = None,
+        rid_ttl: str | None = None,
+        locality: str = "local_dev",
+        delete: bool = False,
     ):
         db_hostname = os.environ.get("DB_HOSTNAME", "local-dss-crdb")
         db_port = os.environ.get("DB_PORT", "26257")
@@ -68,14 +68,14 @@ class EvictHelper:
             self.logger.error(process.stderr.decode("utf-8"))
             sys.exit(1)
 
-    def evict_scd_operational_intents(self, delay, delete):
-        self.run_evict(scd_oir=True, delete=delete, scd_ttl=delay)
+    def evict_scd_operational_intents(self, ttl: str, delete: bool):
+        self.run_evict(scd_oir=True, delete=delete, scd_ttl=ttl)
 
-    def evict_scd_subcriptions(self, delay, delete):
-        self.run_evict(scd_sub=True, delete=delete, scd_ttl=delay)
+    def evict_scd_subcriptions(self, ttl: str, delete: bool):
+        self.run_evict(scd_sub=True, delete=delete, scd_ttl=ttl)
 
-    def evict_rid_ISAs(self, delay, delete, locality="local_dev"):
-        self.run_evict(rid_isa=True, delete=delete, rid_ttl=delay, locality=locality)
+    def evict_rid_ISAs(self, ttl: str, delete: bool, locality: str="local_dev"):
+        self.run_evict(rid_isa=True, delete=delete, rid_ttl=ttl, locality=locality)
 
-    def evict_rid_subcriptions(self, delay, delete, locality="local_dev"):
-        self.run_evict(rid_sub=True, delete=delete, rid_ttl=delay, locality=locality)
+    def evict_rid_subcriptions(self, ttl: str, delete: bool, locality: str="local_dev"):
+        self.run_evict(rid_sub=True, delete=delete, rid_ttl=ttl, locality=locality)
