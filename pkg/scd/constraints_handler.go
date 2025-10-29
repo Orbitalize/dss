@@ -292,14 +292,7 @@ func (a *Server) PutConstraintReference(ctx context.Context, manager string, ent
 		return nil, stacktrace.PropagateWithCode(err, dsserr.BadRequest, "Failed to union extents")
 	}
 
-	if uExtent.StartTime == nil {
-		return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Missing time_start from extents")
-	}
-	if uExtent.EndTime == nil {
-		return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Missing time_end from extents")
-	}
-
-	if uExtent.StartTime.After(*uExtent.EndTime) {
+	if uExtent.StartTime != nil && uExtent.EndTime != nil && uExtent.StartTime.After(*uExtent.EndTime) {
 		return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Constraint time_end must be after time_start")
 	}
 
