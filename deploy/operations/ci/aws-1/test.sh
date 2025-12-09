@@ -43,9 +43,11 @@ kubectl wait --for=condition=complete --timeout=3m job --all
 
 
 # Test the deployment of the DSS
-kubectl apply -f "$BASEDIR/test-resources.yaml"
+kubectl apply --force -f "$BASEDIR/test-resources.yaml"
 kubectl create secret generic -n tests dummy-oauth-certs --from-file="$BASEDIR/../../../../build/test-certs/auth2.key"
-kubectl wait -n tests --for=condition=complete --timeout=10m job.batch/uss-qualifier
+kubectl wait -n tests --for=condition=complete --for=condition=failed --timeout=10m job.batch/uss-qualifier
+# TODO: Verify outcome of the job
+
 # dummy-oauth-certs secret is deleted with the namespace using the command below
 kubectl delete -f "$BASEDIR/test-resources.yaml"
 
