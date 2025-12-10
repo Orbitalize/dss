@@ -18,7 +18,7 @@ services:
       - TF_VAR_aws_role_to_assume
       - TF_VAR_aws_route53_zone_id
       - TF_VAR_db_hostname_suffix
-      - DO_NOT_DESTROY=true
+      - DO_NOT_DESTROY
     volumes:
       - type: bind
         source: ../../
