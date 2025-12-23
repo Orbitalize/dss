@@ -128,7 +128,7 @@ func TestListExpiredSubscriptionsMaxLimit(t *testing.T) {
 	r, err := store.Interact(ctx)
 	require.NoError(t, err)
 
-	for range models.MaxResultLimit + 1 {
+	for range models.MaxResultLimit {
 		id := uuid.New()
 		subID := models.ID(id.String())
 		sub := &scdmodels.Subscription{
@@ -144,23 +144,33 @@ func TestListExpiredSubscriptionsMaxLimit(t *testing.T) {
 			Cells:                       cells,
 		}
 		_, err = r.UpsertSubscription(ctx, sub)
+		require.NoError(t, err)
 	}
 
-	testCases := []struct {
-		name    string
-		timeRef time.Time
-		ttl     time.Duration
-	}{{
-		name:    "too many expired",
-		timeRef: time.Date(2024, time.December, 15, 15, 0, 0, 0, time.UTC),
-		ttl:     time.Hour * 24 * 30,
-	}}
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			threshold := testCase.timeRef.Add(-testCase.ttl)
-			_, err := r.ListExpiredSubscriptions(ctx, threshold)
-			require.Error(t, err)
-			require.ErrorContainsf(t, err, "Query returned", "%d subscriptions which exceeds the maximum allowed %d", models.MaxResultLimit+1, models.MaxResultLimit)
-		})
+	timeRef := time.Date(2024, time.December, 15, 15, 0, 0, 0, time.UTC)
+	ttl := time.Hour * 24 * 30
+	threshold := timeRef.Add(-ttl)
+	_, err = r.ListExpiredSubscriptions(ctx, threshold)
+	require.NoError(t, err)
+
+	// Insert one more to exceed the limit
+	id := uuid.New()
+	subID := models.ID(id.String())
+	sub := &scdmodels.Subscription{
+		ID:                          subID,
+		NotificationIndex:           1,
+		Manager:                     "unittest",
+		StartTime:                   &start1,
+		EndTime:                     &end1,
+		USSBaseURL:                  "https://dummy.uss",
+		NotifyForOperationalIntents: true,
+		NotifyForConstraints:        false,
+		ImplicitSubscription:        true,
+		Cells:                       cells,
 	}
+	_, err = r.UpsertSubscription(ctx, sub)
+	require.NoError(t, err)
+	_, err = r.ListExpiredSubscriptions(ctx, threshold)
+	require.Error(t, err)
+	require.ErrorContainsf(t, err, "Query returned", "%d subscriptions which exceeds the maximum allowed %d", models.MaxResultLimit+1, models.MaxResultLimit)
 }
