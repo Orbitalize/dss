@@ -150,12 +150,10 @@ func TestListExpiredSubscriptionsMaxLimit(t *testing.T) {
 		name    string
 		timeRef time.Time
 		ttl     time.Duration
-		// expired []models.ID
 	}{{
-		name:    "all expired",
+		name:    "too many expired",
 		timeRef: time.Date(2024, time.December, 15, 15, 0, 0, 0, time.UTC),
 		ttl:     time.Hour * 24 * 30,
-		// expired: []models.ID{sub1ID, sub2ID, sub3ID},
 	}}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {

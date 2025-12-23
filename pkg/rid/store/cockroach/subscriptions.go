@@ -35,7 +35,10 @@ func (r *repo) process(ctx context.Context, query string, args ...interface{}) (
 	for rows.Next() {
 		s := new(ridmodels.Subscription)
 
-		var updateTime time.Time
+		var (
+			updateTime time.Time
+			count      int
+		)
 
 		err := rows.Scan(
 			&s.ID,
@@ -47,12 +50,15 @@ func (r *repo) process(ctx context.Context, query string, args ...interface{}) (
 			&s.EndTime,
 			&writer,
 			&updateTime,
+			&count,
 		)
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Error scanning Subscription row")
 		}
+		if count > dssmodels.MaxResultLimit {
+			return nil, stacktrace.NewError("Query returned %d subscriptions which exceeds the maximum allowed %d", count, dssmodels.MaxResultLimit)
+		}
 		s.Writer = writer.String
-
 		s.SetCells(cids)
 		s.Version = dssmodels.VersionFromTime(updateTime)
 		payload = append(payload, s)
@@ -113,7 +119,8 @@ func (r *repo) MaxSubscriptionCountInCellsByOwner(ctx context.Context, cells s2.
 func (r *repo) GetSubscription(ctx context.Context, id dssmodels.ID) (*ridmodels.Subscription, error) {
 	// TODO(steeling) we should enforce startTime and endTime to not be null at the DB level.
 	var query = fmt.Sprintf(`
-		SELECT %s FROM subscriptions
+		SELECT %s, COUNT(*) OVER() -- placeholder for count
+		FROM subscriptions
 		WHERE id = $1`, subscriptionFields)
 	uid, err := id.PgUUID()
 	if err != nil {
@@ -132,7 +139,8 @@ func (r *repo) UpdateSubscription(ctx context.Context, s *ridmodels.Subscription
 		SET (%s) = ($1, $2, $3, $4, $5, $6, $7, transaction_timestamp())
 		WHERE id = $1 AND updated_at = $8
 		RETURNING
-			%s`, updateSubscriptionFields, subscriptionFields)
+			%s,1 -- placeholder for count
+		`, updateSubscriptionFields, subscriptionFields)
 	)
 
 	cids, err := dssql.CellUnionToCellIdsWithValidation(s.Cells)
@@ -167,7 +175,8 @@ func (r *repo) InsertSubscription(ctx context.Context, s *ridmodels.Subscription
 		VALUES
 			($1, $2, $3, $4, $5, $6, $7, $8, transaction_timestamp())
 		RETURNING
-			%s`, subscriptionFields, subscriptionFields)
+			%s,1 -- placeholder for count
+		`, subscriptionFields, subscriptionFields)
 	)
 
 	cids, err := dssql.CellUnionToCellIdsWithValidation(s.Cells)
@@ -202,7 +211,8 @@ func (r *repo) DeleteSubscription(ctx context.Context, s *ridmodels.Subscription
 		WHERE
 			id = $1
 			AND updated_at = $2
-		RETURNING %s`, subscriptionFields)
+		RETURNING %s,1 -- placeholder for count
+		`, subscriptionFields)
 	)
 	id, err := s.ID.PgUUID()
 	if err != nil {
@@ -219,7 +229,8 @@ func (r *repo) UpdateNotificationIdxsInCells(ctx context.Context, cells s2.CellU
 			WHERE
 				cells && $1
 				AND ends_at >= $2
-			RETURNING %s`, subscriptionFields)
+			RETURNING %s,1 -- placeholder for count
+			`, subscriptionFields)
 
 	return r.process(
 		ctx, updateQuery, dssql.CellUnionToCellIds(cells), r.clock.Now())
@@ -230,21 +241,21 @@ func (r *repo) SearchSubscriptions(ctx context.Context, cells s2.CellUnion) ([]*
 	var (
 		query = fmt.Sprintf(`
 			SELECT
-				%s
+				%s, COUNT(*) OVER() -- placeholder for count
 			FROM
 				subscriptions
 			WHERE
 				cells && $1
 			AND
 				ends_at >= $2
-			LIMIT $3`, subscriptionFields)
+			`, subscriptionFields)
 	)
 
 	if len(cells) == 0 {
 		return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "no location provided")
 	}
 
-	return r.process(ctx, query, dssql.CellUnionToCellIds(cells), r.clock.Now(), dssmodels.MaxResultLimit)
+	return r.process(ctx, query, dssql.CellUnionToCellIds(cells), r.clock.Now())
 }
 
 // SearchSubscriptionsByOwner returns all subscriptions in "cells".
@@ -252,7 +263,7 @@ func (r *repo) SearchSubscriptionsByOwner(ctx context.Context, cells s2.CellUnio
 	var (
 		query = fmt.Sprintf(`
 			SELECT
-				%s
+				%s, COUNT(*) OVER() -- placeholder for count
 			FROM
 				subscriptions
 			WHERE
@@ -261,14 +272,14 @@ func (r *repo) SearchSubscriptionsByOwner(ctx context.Context, cells s2.CellUnio
 				subscriptions.owner = $2
 			AND
 				ends_at >= $3
-			LIMIT $4`, subscriptionFields)
+			`, subscriptionFields)
 	)
 
 	if len(cells) == 0 {
 		return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "no location provided")
 	}
 
-	return r.process(ctx, query, dssql.CellUnionToCellIds(cells), owner, r.clock.Now(), dssmodels.MaxResultLimit)
+	return r.process(ctx, query, dssql.CellUnionToCellIds(cells), owner, r.clock.Now())
 }
 
 // ListExpiredSubscriptions lists all expired Subscriptions based on writer.
@@ -283,7 +294,7 @@ func (r *repo) ListExpiredSubscriptions(ctx context.Context, writer string) ([]*
 	var (
 		query = fmt.Sprintf(`
 	SELECT
-		%s
+		%s, COUNT(*) OVER() -- placeholder for count
 	FROM
 		subscriptions
 	WHERE
