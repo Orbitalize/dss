@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/interuss/dss/pkg/models"
 	scdmodels "github.com/interuss/dss/pkg/scd/models"
 	"github.com/stretchr/testify/require"
@@ -112,6 +113,56 @@ func TestListExpiredSubscriptions(t *testing.T) {
 				expiredIDs = append(expiredIDs, expiredSub.ID)
 			}
 			require.ElementsMatch(t, expiredIDs, testCase.expired)
+		})
+	}
+}
+
+func TestListExpiredSubscriptionsMaxLimit(t *testing.T) {
+	var (
+		ctx                  = context.Background()
+		store, tearDownStore = setUpStore(ctx, t)
+	)
+	require.NotNil(t, store)
+	defer tearDownStore()
+
+	r, err := store.Interact(ctx)
+	require.NoError(t, err)
+
+	for range models.MaxResultLimit + 1 {
+		id := uuid.New()
+		subID := models.ID(id.String())
+		sub := &scdmodels.Subscription{
+			ID:                          subID,
+			NotificationIndex:           1,
+			Manager:                     "unittest",
+			StartTime:                   &start1,
+			EndTime:                     &end1,
+			USSBaseURL:                  "https://dummy.uss",
+			NotifyForOperationalIntents: true,
+			NotifyForConstraints:        false,
+			ImplicitSubscription:        true,
+			Cells:                       cells,
+		}
+		_, err = r.UpsertSubscription(ctx, sub)
+	}
+
+	testCases := []struct {
+		name    string
+		timeRef time.Time
+		ttl     time.Duration
+		// expired []models.ID
+	}{{
+		name:    "all expired",
+		timeRef: time.Date(2024, time.December, 15, 15, 0, 0, 0, time.UTC),
+		ttl:     time.Hour * 24 * 30,
+		// expired: []models.ID{sub1ID, sub2ID, sub3ID},
+	}}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			threshold := testCase.timeRef.Add(-testCase.ttl)
+			_, err := r.ListExpiredSubscriptions(ctx, threshold)
+			require.Error(t, err)
+			require.ErrorContainsf(t, err, "Query returned", "%d subscriptions which exceeds the maximum allowed %d", models.MaxResultLimit+1, models.MaxResultLimit)
 		})
 	}
 }
