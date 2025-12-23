@@ -72,6 +72,7 @@ func (s *repo) fetchOperationalIntents(ctx context.Context, q dsssql.Queryable, 
 		var (
 			o         = &scdmodels.OperationalIntent{}
 			updatedAt time.Time
+			count     int
 		)
 		err := rows.Scan(
 			&o.ID,
@@ -88,9 +89,13 @@ func (s *repo) fetchOperationalIntents(ctx context.Context, q dsssql.Queryable, 
 			&cids,
 			&ussRequestedOVN,
 			&pastOVNs,
+			&count,
 		)
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Error scanning Operation row")
+		}
+		if count > dssmodels.MaxResultLimit {
+			return nil, stacktrace.NewError("Query returned %d Operations which exceeds the maximum allowed %d", count, dssmodels.MaxResultLimit)
 		}
 
 		// If the managing USS has requested a specific OVN on this operational intent, it will be persisted in DB.
@@ -149,7 +154,9 @@ func (s *repo) fetchOperationalIntent(ctx context.Context, q dsssql.Queryable, q
 
 func (s *repo) fetchOperationByID(ctx context.Context, q dsssql.Queryable, id dssmodels.ID) (*scdmodels.OperationalIntent, error) {
 	query := fmt.Sprintf(`
-		SELECT %s FROM
+		SELECT
+			%s, COUNT(*) OVER() -- placeholder for count
+		FROM
 			scd_operations
 		WHERE
 			id = $1`, operationFieldsWithoutPrefix)
@@ -216,7 +223,7 @@ func (s *repo) UpsertOperationalIntent(ctx context.Context, operation *scdmodels
 					uss_requested_ovn = $12,
 					past_ovns = $13
 				RETURNING
-					%s`,
+					%s,1 -- placeholder for count`,
 			operationFieldsWithoutPrefix,
 			operationFieldsWithPrefix,
 		)
@@ -292,7 +299,7 @@ func (s *repo) searchOperationalIntents(ctx context.Context, q dsssql.Queryable,
 				COALESCE(scd_operations.ends_at >= $4, true)
 			AND
 				COALESCE(scd_operations.starts_at <= $5, true)
-			LIMIT $6`, operationFieldsWithPrefix)
+			`, operationFieldsWithPrefix)
 	)
 
 	if v4d.SpatialVolume == nil || v4d.SpatialVolume.Footprint == nil {
@@ -313,7 +320,6 @@ func (s *repo) searchOperationalIntents(ctx context.Context, q dsssql.Queryable,
 		v4d.SpatialVolume.AltitudeHi,
 		v4d.StartTime,
 		v4d.EndTime,
-		dssmodels.MaxResultLimit,
 	)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Error fetching Operations")
@@ -364,19 +370,18 @@ func (s *repo) GetDependentOperationalIntents(ctx context.Context, subscriptionI
 func (s *repo) ListExpiredOperationalIntents(ctx context.Context, threshold time.Time) ([]*scdmodels.OperationalIntent, error) {
 	expiredOpIntentsQuery := fmt.Sprintf(`
         SELECT
-            %s
+            %s, COUNT(*) OVER() -- placeholder for count
         FROM
             scd_operations
         WHERE
             scd_operations.ends_at IS NOT NULL AND scd_operations.ends_at <= $1
             OR
             scd_operations.ends_at IS NULL AND scd_operations.updated_at <= $1 -- use last update time as reference if there is no end time
-        LIMIT $2`, operationFieldsWithPrefix)
+        `, operationFieldsWithPrefix)
 
 	result, err := s.fetchOperationalIntents(
 		ctx, s.q, expiredOpIntentsQuery,
 		threshold,
-		dssmodels.MaxResultLimit,
 	)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Error fetching Operations")

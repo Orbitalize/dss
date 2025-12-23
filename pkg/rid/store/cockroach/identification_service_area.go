@@ -35,7 +35,10 @@ func (r *repo) fetchISAs(ctx context.Context, query string, args ...interface{})
 	for rows.Next() {
 		i := new(ridmodels.IdentificationServiceArea)
 
-		var updateTime time.Time
+		var (
+			updateTime time.Time
+			count      int
+		)
 
 		err := rows.Scan(
 			&i.ID,
@@ -46,9 +49,13 @@ func (r *repo) fetchISAs(ctx context.Context, query string, args ...interface{})
 			&i.EndTime,
 			&writer,
 			&updateTime,
+			&count,
 		)
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Error scanning ISA row")
+		}
+		if count > dssmodels.MaxResultLimit {
+			return nil, stacktrace.NewError("Query returned %d ISAs which exceeds the maximum allowed %d", count, dssmodels.MaxResultLimit)
 		}
 		i.Writer = writer.String
 		i.SetCells(cids)
@@ -80,7 +87,9 @@ func (r *repo) fetchISA(ctx context.Context, query string, args ...interface{}) 
 // Returns nil, nil if not found
 func (r *repo) GetISA(ctx context.Context, id dssmodels.ID, forUpdate bool) (*ridmodels.IdentificationServiceArea, error) {
 	var query = fmt.Sprintf(`
-		SELECT %s FROM
+		SELECT
+			%s,1 -- placeholder for count
+		FROM
 			identification_service_areas
 		WHERE
 			id = $1
@@ -108,7 +117,8 @@ func (r *repo) InsertISA(ctx context.Context, isa *ridmodels.IdentificationServi
 			VALUES
 				($1, $2, $3, $4, $5, $6, $7, transaction_timestamp())
 			RETURNING
-				%s`, isaFields, isaFields)
+				%s,1 -- placeholder for count
+			`, isaFields, isaFields)
 	)
 
 	cids := make([]int64, len(isa.Cells))
@@ -143,7 +153,8 @@ func (r *repo) UpdateISA(ctx context.Context, isa *ridmodels.IdentificationServi
 			SET	(%s) = ($1, $2, $3, $4, $5, $7, transaction_timestamp())
 			WHERE id = $1 AND updated_at = $6
 			RETURNING
-				%s`, updateISAFields, isaFields)
+				%s,1 -- placeholder for count
+			`, updateISAFields, isaFields)
 	)
 
 	cids, err := dssql.CellUnionToCellIdsWithValidation(isa.Cells)
@@ -169,7 +180,9 @@ func (r *repo) DeleteISA(ctx context.Context, isa *ridmodels.IdentificationServi
 				id = $1
 			AND
 				updated_at = $2
-			RETURNING %s`, isaFields)
+			RETURNING
+				%s,1 -- placeholder for count
+			`, isaFields)
 	)
 	id, err := isa.ID.PgUUID()
 	if err != nil {
@@ -187,7 +200,7 @@ func (r *repo) SearchISAs(ctx context.Context, cells s2.CellUnion, earliest *tim
 		// Make them real values (not pointers), on the model layer.
 		isasInCellsQuery = fmt.Sprintf(`
 			SELECT
-				%s
+				%s, COUNT(*) OVER() -- placeholder for count
 			FROM
 				identification_service_areas
 			WHERE
@@ -196,7 +209,7 @@ func (r *repo) SearchISAs(ctx context.Context, cells s2.CellUnion, earliest *tim
 				COALESCE(starts_at <= $2, true)
 			AND
 				cells && $3
-			LIMIT $4`, isaFields)
+			`, isaFields)
 	)
 
 	if len(cells) == 0 {
@@ -207,7 +220,7 @@ func (r *repo) SearchISAs(ctx context.Context, cells s2.CellUnion, earliest *tim
 		return nil, stacktrace.NewError("Earliest start time is missing")
 	}
 
-	return r.fetchISAs(ctx, isasInCellsQuery, earliest, latest, dssql.CellUnionToCellIds(cells), dssmodels.MaxResultLimit)
+	return r.fetchISAs(ctx, isasInCellsQuery, earliest, latest, dssql.CellUnionToCellIds(cells))
 }
 
 // ListExpiredISAs lists all expired ISAs based on writer.
@@ -219,18 +232,16 @@ func (r *repo) ListExpiredISAs(ctx context.Context, writer string) ([]*ridmodels
 		writerQuery = "'' OR writer = NULL"
 	}
 
-	var (
-		isasInCellsQuery = fmt.Sprintf(`
-	SELECT
-		%s
-	FROM
-		identification_service_areas
-	WHERE
-		ends_at + INTERVAL '%d' MINUTE <= CURRENT_TIMESTAMP
-	AND
-		(writer = %s)
-	LIMIT $1`, isaFields, expiredDurationInMin, writerQuery)
-	)
+	var isasInCellsQuery = fmt.Sprintf(`
+		SELECT
+			%s, COUNT(*) OVER() -- placeholder for count
+		FROM
+			identification_service_areas
+		WHERE
+			ends_at + INTERVAL '%d' MINUTE <= CURRENT_TIMESTAMP
+		AND
+			(writer = %s)
+    	`, isaFields, expiredDurationInMin, writerQuery)
 
-	return r.fetchISAs(ctx, isasInCellsQuery, dssmodels.MaxResultLimit)
+	return r.fetchISAs(ctx, isasInCellsQuery)
 }

@@ -65,6 +65,7 @@ func (c *repo) fetchConstraints(ctx context.Context, q dsssql.Queryable, query s
 		var (
 			c         = new(scdmodels.Constraint)
 			updatedAt time.Time
+			count     int
 		)
 		err := rows.Scan(
 			&c.ID,
@@ -77,9 +78,13 @@ func (c *repo) fetchConstraints(ctx context.Context, q dsssql.Queryable, query s
 			&c.EndTime,
 			&cids,
 			&updatedAt,
+			&count,
 		)
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Error scanning Constraint row")
+		}
+		if count > dssmodels.MaxResultLimit {
+			return nil, stacktrace.NewError("Query returned %d Constraints which exceeds the maximum allowed %d", count, dssmodels.MaxResultLimit)
 		}
 		c.Cells = geo.CellUnionFromInt64(cids)
 		c.OVN = scdmodels.NewOVNFromTime(updatedAt, c.ID.String())
@@ -110,7 +115,7 @@ func (c *repo) GetConstraint(ctx context.Context, id dssmodels.ID) (*scdmodels.C
 	var (
 		query = fmt.Sprintf(`
 			SELECT
-				%s
+				%s, COUNT(*) OVER() -- placeholder for count
 			FROM
 				scd_constraints
 			WHERE
@@ -142,11 +147,9 @@ func (c *repo) UpsertConstraint(ctx context.Context, s *scdmodels.Constraint) (*
 			ends_at = $8,
 			cells = $9,
 			updated_at = transaction_timestamp()
-		RETURNING %s
-		`,
-			constraintFieldsWithoutPrefix,
-			constraintFieldsWithPrefix,
-		)
+		RETURNING
+			%s,1 -- placeholder for count
+		`, constraintFieldsWithoutPrefix, constraintFieldsWithPrefix)
 	)
 
 	cids, err := dsssql.CellUnionToCellIdsWithValidation(s.Cells)
@@ -207,7 +210,7 @@ func (c *repo) SearchConstraints(ctx context.Context, v4d *dssmodels.Volume4D) (
 	var (
 		query = fmt.Sprintf(`
 			SELECT
-				%s
+				%s, COUNT(*) OVER() -- placeholder for count
 			FROM
 				scd_constraints
 			WHERE
@@ -216,7 +219,6 @@ func (c *repo) SearchConstraints(ctx context.Context, v4d *dssmodels.Volume4D) (
 				COALESCE(starts_at <= $3, true)
 			AND
 				COALESCE(ends_at >= $2, true)
-			LIMIT $4
 			`, constraintFieldsWithoutPrefix)
 	)
 
@@ -232,7 +234,7 @@ func (c *repo) SearchConstraints(ctx context.Context, v4d *dssmodels.Volume4D) (
 	}
 
 	constraints, err := c.fetchConstraints(
-		ctx, c.q, query, dsssql.CellUnionToCellIds(cells), v4d.StartTime, v4d.EndTime, dssmodels.MaxResultLimit)
+		ctx, c.q, query, dsssql.CellUnionToCellIds(cells), v4d.StartTime, v4d.EndTime)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Error fetching Constraints")
 	}
