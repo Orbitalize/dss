@@ -32,6 +32,7 @@ func (r *repo) process(ctx context.Context, query string, args ...interface{}) (
 	var cids []int64
 
 	var writer pgtype.Text
+	var count int
 	for rows.Next() {
 		s := new(ridmodels.Subscription)
 
@@ -51,8 +52,11 @@ func (r *repo) process(ctx context.Context, query string, args ...interface{}) (
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Error scanning Subscription row")
 		}
+		count++
+		if count > dssmodels.MaxResultLimit {
+			return nil, stacktrace.NewError("Result set exceeded max limit of %d", dssmodels.MaxResultLimit)
+		}
 		s.Writer = writer.String
-
 		s.SetCells(cids)
 		s.Version = dssmodels.VersionFromTime(updateTime)
 		payload = append(payload, s)
@@ -237,14 +241,14 @@ func (r *repo) SearchSubscriptions(ctx context.Context, cells s2.CellUnion) ([]*
 				cells && $1
 			AND
 				ends_at >= $2
-			LIMIT $3`, subscriptionFields)
+			`, subscriptionFields)
 	)
 
 	if len(cells) == 0 {
 		return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "no location provided")
 	}
 
-	return r.process(ctx, query, dssql.CellUnionToCellIds(cells), r.clock.Now(), dssmodels.MaxResultLimit)
+	return r.process(ctx, query, dssql.CellUnionToCellIds(cells), r.clock.Now())
 }
 
 // SearchSubscriptionsByOwner returns all subscriptions in "cells".
@@ -261,14 +265,14 @@ func (r *repo) SearchSubscriptionsByOwner(ctx context.Context, cells s2.CellUnio
 				subscriptions.owner = $2
 			AND
 				ends_at >= $3
-			LIMIT $4`, subscriptionFields)
+			`, subscriptionFields)
 	)
 
 	if len(cells) == 0 {
 		return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "no location provided")
 	}
 
-	return r.process(ctx, query, dssql.CellUnionToCellIds(cells), owner, r.clock.Now(), dssmodels.MaxResultLimit)
+	return r.process(ctx, query, dssql.CellUnionToCellIds(cells), owner, r.clock.Now())
 }
 
 // ListExpiredSubscriptions lists all expired Subscriptions based on writer.
