@@ -35,7 +35,8 @@ const (
 	versionBase = 32
 )
 
-// Set a max limit for the SELECT query result
+// Set a max limit for looping on results
+// NOTE: var so it can be overridden in unit tests
 var MaxResultLimit = 10000
 
 // PgUUID converts an ID to a pgtype.UUID.
