@@ -2,7 +2,6 @@ package cockroach
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -173,8 +172,7 @@ func TestListExpiredSubscriptionsMaxLimit(t *testing.T) {
 	}
 	_, err = r.UpsertSubscription(ctx, sub)
 	require.NoError(t, err)
-	s, err := r.ListExpiredSubscriptions(ctx, threshold)
-	fmt.Printf("subscriptions: %d\n", len(s))
+	_, err = r.ListExpiredSubscriptions(ctx, threshold)
 	require.Error(t, err)
 	require.ErrorContainsf(t, err, "Result set exceeded max limit of", "%d", models.MaxResultLimit)
 }
