@@ -61,6 +61,7 @@ func (c *repo) fetchConstraints(ctx context.Context, q dsssql.Queryable, query s
 
 	var payload []*scdmodels.Constraint
 	var cids []int64
+	var count int
 	for rows.Next() {
 		var (
 			c         = new(scdmodels.Constraint)
@@ -80,6 +81,10 @@ func (c *repo) fetchConstraints(ctx context.Context, q dsssql.Queryable, query s
 		)
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Error scanning Constraint row")
+		}
+		count++
+		if count > dssmodels.MaxResultLimit {
+			return nil, stacktrace.NewError("Result set exceeded max limit of %d", dssmodels.MaxResultLimit)
 		}
 		c.Cells = geo.CellUnionFromInt64(cids)
 		c.OVN = scdmodels.NewOVNFromTime(updatedAt, c.ID.String())
@@ -216,7 +221,6 @@ func (c *repo) SearchConstraints(ctx context.Context, v4d *dssmodels.Volume4D) (
 				COALESCE(starts_at <= $3, true)
 			AND
 				COALESCE(ends_at >= $2, true)
-			LIMIT $4
 			`, constraintFieldsWithoutPrefix)
 	)
 
@@ -232,7 +236,7 @@ func (c *repo) SearchConstraints(ctx context.Context, v4d *dssmodels.Volume4D) (
 	}
 
 	constraints, err := c.fetchConstraints(
-		ctx, c.q, query, dsssql.CellUnionToCellIds(cells), v4d.StartTime, v4d.EndTime, dssmodels.MaxResultLimit)
+		ctx, c.q, query, dsssql.CellUnionToCellIds(cells), v4d.StartTime, v4d.EndTime)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Error fetching Constraints")
 	}

@@ -33,10 +33,10 @@ const (
 	// 32 used to be the highest value allowed by strconv. The new value is 36,
 	// although changes to this will result in RMW errors.
 	versionBase = 32
-
-	// Set a max limit for the SELECT query result
-	MaxResultLimit = 10000
 )
+
+// Set a max limit for the SELECT query result
+var MaxResultLimit = 10000
 
 // PgUUID converts an ID to a pgtype.UUID.
 // If the ID this is called on is nil, nil will be returned

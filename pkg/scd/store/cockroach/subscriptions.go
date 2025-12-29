@@ -97,6 +97,7 @@ func (c *repo) fetchSubscriptions(ctx context.Context, q dsssql.Queryable, query
 
 	var payload []*scdmodels.Subscription
 	var cids []int64
+	var count int
 	for rows.Next() {
 		var (
 			s         = new(scdmodels.Subscription)
@@ -120,10 +121,11 @@ func (c *repo) fetchSubscriptions(ctx context.Context, q dsssql.Queryable, query
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Error scanning Subscription row")
 		}
-		s.Version = scdmodels.NewOVNFromTime(updatedAt, s.ID.String())
-		if err != nil {
-			return nil, stacktrace.Propagate(err, "Error generating Subscription version")
+		count++
+		if count > dssmodels.MaxResultLimit {
+			return nil, stacktrace.NewError("Result set exceeded max limit of %d", dssmodels.MaxResultLimit)
 		}
+		s.Version = scdmodels.NewOVNFromTime(updatedAt, s.ID.String())
 		s.SetCells(cids)
 		payload = append(payload, s)
 	}
@@ -309,7 +311,7 @@ func (c *repo) SearchSubscriptions(ctx context.Context, v4d *dssmodels.Volume4D)
 					COALESCE(starts_at <= $3, true)
 				AND
 					COALESCE(ends_at >= $2, true)
-				LIMIT $4`, subscriptionFieldsWithPrefix)
+				`, subscriptionFieldsWithPrefix)
 	)
 
 	// TODO: Lazily calculate & cache spatial covering so that it is only ever
@@ -324,7 +326,7 @@ func (c *repo) SearchSubscriptions(ctx context.Context, v4d *dssmodels.Volume4D)
 	}
 
 	subscriptions, err := c.fetchSubscriptions(
-		ctx, c.q, query, dsssql.CellUnionToCellIds(cells), v4d.StartTime, v4d.EndTime, dssmodels.MaxResultLimit)
+		ctx, c.q, query, dsssql.CellUnionToCellIds(cells), v4d.StartTime, v4d.EndTime)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Unable to fetch Subscriptions")
 	}
@@ -410,12 +412,11 @@ func (c *repo) ListExpiredSubscriptions(ctx context.Context, threshold time.Time
             scd_subscriptions.ends_at IS NOT NULL AND scd_subscriptions.ends_at <= $1
             OR
             scd_subscriptions.ends_at IS NULL AND scd_subscriptions.updated_at <= $1 -- use last update time as reference if there is no end time
-        LIMIT $2`, subscriptionFieldsWithPrefix)
+        `, subscriptionFieldsWithPrefix)
 
 	subscriptions, err := c.fetchSubscriptions(
 		ctx, c.q, expiredSubsQuery,
 		threshold,
-		dssmodels.MaxResultLimit,
 	)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Unable to fetch Subscriptions")

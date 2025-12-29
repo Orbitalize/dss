@@ -66,6 +66,7 @@ func (s *repo) fetchOperationalIntents(ctx context.Context, q dsssql.Queryable, 
 		cids            []int64
 		ussRequestedOVN pgtype.Text
 		pastOVNs        []string
+		count           int
 	)
 	ussAvailabilities := map[dssmodels.Manager]scdmodels.UssAvailabilityState{}
 	for rows.Next() {
@@ -91,6 +92,10 @@ func (s *repo) fetchOperationalIntents(ctx context.Context, q dsssql.Queryable, 
 		)
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Error scanning Operation row")
+		}
+		count++
+		if count > dssmodels.MaxResultLimit {
+			return nil, stacktrace.NewError("Result set exceeded max limit of %d", dssmodels.MaxResultLimit)
 		}
 
 		// If the managing USS has requested a specific OVN on this operational intent, it will be persisted in DB.
@@ -292,7 +297,7 @@ func (s *repo) searchOperationalIntents(ctx context.Context, q dsssql.Queryable,
 				COALESCE(scd_operations.ends_at >= $4, true)
 			AND
 				COALESCE(scd_operations.starts_at <= $5, true)
-			LIMIT $6`, operationFieldsWithPrefix)
+			`, operationFieldsWithPrefix)
 	)
 
 	if v4d.SpatialVolume == nil || v4d.SpatialVolume.Footprint == nil {
@@ -313,7 +318,6 @@ func (s *repo) searchOperationalIntents(ctx context.Context, q dsssql.Queryable,
 		v4d.SpatialVolume.AltitudeHi,
 		v4d.StartTime,
 		v4d.EndTime,
-		dssmodels.MaxResultLimit,
 	)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Error fetching Operations")
@@ -371,12 +375,11 @@ func (s *repo) ListExpiredOperationalIntents(ctx context.Context, threshold time
             scd_operations.ends_at IS NOT NULL AND scd_operations.ends_at <= $1
             OR
             scd_operations.ends_at IS NULL AND scd_operations.updated_at <= $1 -- use last update time as reference if there is no end time
-        LIMIT $2`, operationFieldsWithPrefix)
+        `, operationFieldsWithPrefix)
 
 	result, err := s.fetchOperationalIntents(
 		ctx, s.q, expiredOpIntentsQuery,
 		threshold,
-		dssmodels.MaxResultLimit,
 	)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Error fetching Operations")

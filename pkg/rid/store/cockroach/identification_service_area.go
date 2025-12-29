@@ -32,6 +32,7 @@ func (r *repo) fetchISAs(ctx context.Context, query string, args ...interface{})
 	var cids []int64
 
 	var writer pgtype.Text
+	var count int
 	for rows.Next() {
 		i := new(ridmodels.IdentificationServiceArea)
 
@@ -49,6 +50,10 @@ func (r *repo) fetchISAs(ctx context.Context, query string, args ...interface{})
 		)
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Error scanning ISA row")
+		}
+		count++
+		if count > dssmodels.MaxResultLimit {
+			return nil, stacktrace.NewError("Result set exceeded max limit of %d", dssmodels.MaxResultLimit)
 		}
 		i.Writer = writer.String
 		i.SetCells(cids)
@@ -196,7 +201,7 @@ func (r *repo) SearchISAs(ctx context.Context, cells s2.CellUnion, earliest *tim
 				COALESCE(starts_at <= $2, true)
 			AND
 				cells && $3
-			LIMIT $4`, isaFields)
+			`, isaFields)
 	)
 
 	if len(cells) == 0 {
@@ -207,7 +212,7 @@ func (r *repo) SearchISAs(ctx context.Context, cells s2.CellUnion, earliest *tim
 		return nil, stacktrace.NewError("Earliest start time is missing")
 	}
 
-	return r.fetchISAs(ctx, isasInCellsQuery, earliest, latest, dssql.CellUnionToCellIds(cells), dssmodels.MaxResultLimit)
+	return r.fetchISAs(ctx, isasInCellsQuery, earliest, latest, dssql.CellUnionToCellIds(cells))
 }
 
 // ListExpiredISAs lists all expired ISAs based on writer.
@@ -229,8 +234,8 @@ func (r *repo) ListExpiredISAs(ctx context.Context, writer string) ([]*ridmodels
 		ends_at + INTERVAL '%d' MINUTE <= CURRENT_TIMESTAMP
 	AND
 		(writer = %s)
-	LIMIT $1`, isaFields, expiredDurationInMin, writerQuery)
+	`, isaFields, expiredDurationInMin, writerQuery)
 	)
 
-	return r.fetchISAs(ctx, isasInCellsQuery, dssmodels.MaxResultLimit)
+	return r.fetchISAs(ctx, isasInCellsQuery)
 }
