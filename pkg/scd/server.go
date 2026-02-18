@@ -19,6 +19,7 @@ func makeSubscribersToNotify(subscriptions []*scdmodels.Subscription) []restapi.
 	for _, sub := range subscriptions {
 		subState := restapi.SubscriptionState{
 			SubscriptionId:    restapi.SubscriptionID(sub.ID.String()),
+			Manager:           sub.Manager.String(),
 			NotificationIndex: restapi.SubscriptionNotificationIndex(sub.NotificationIndex),
 		}
 		subscriptionsByURL[sub.USSBaseURL] = append(subscriptionsByURL[sub.USSBaseURL], subState)
