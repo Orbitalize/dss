@@ -241,7 +241,7 @@ func (a *Server) UpdateConstraintReference(ctx context.Context, req *restapi.Upd
 // If the ovn argument is empty (""), it will attempt to create a new Constraint.
 func (a *Server) PutConstraintReference(ctx context.Context, manager string, entityid restapi.EntityID, ovn restapi.EntityOVN, params *restapi.PutConstraintReferenceParameters,
 ) (*restapi.ChangeConstraintReferenceResponse, error) {
-	validParams, err := validateAndReturnConstraintUpsertParams(time.Now(), entityid, ovn, params, a.AllowHTTPBaseUrls)
+	validParams, err := validateAndReturnConstraintUpsertParams(time.Now(), entityid, ovn, params, a.AllowHTTPBaseUrls, a.RelaxedConstraints)
 	if err != nil {
 		return nil, stacktrace.PropagateWithCode(err, dsserr.BadRequest, "Failed to validate Constraint upsert parameters")
 	}
@@ -372,6 +372,7 @@ func validateAndReturnConstraintUpsertParams(
 	ovn restapi.EntityOVN,
 	params *restapi.PutConstraintReferenceParameters,
 	allowHTTPBaseUrls bool,
+	relaxedConstraints bool,
 ) (*validConstraintParams, error) {
 	valid := &validConstraintParams{}
 	var err error
@@ -393,13 +394,15 @@ func validateAndReturnConstraintUpsertParams(
 		}
 	}
 
-	// Start and end times are required for each volume
 	// The end time may not be in the past
-	valid.uExtent, err = dssmodels.UnionVolumes4DFromSCDRest(
-		params.Extents,
-		dssmodels.WithRequireTimeBounds(),
+	validators := []dssmodels.Volume4DValidator{
 		dssmodels.WithRequireEndTimeAfter(now),
-	)
+	}
+	if !relaxedConstraints {
+		// Start and end times are required for each volume
+		validators = append(validators, dssmodels.WithRequireTimeBounds())
+	}
+	valid.uExtent, err = dssmodels.UnionVolumes4DFromSCDRest(params.Extents, validators...)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Invalid extents")
 	}

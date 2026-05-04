@@ -59,7 +59,8 @@ var (
 	keyRefreshTimeout = flag.Duration("key_refresh_timeout", 1*time.Minute, "Timeout for refreshing keys for JWT verification")
 	jwtAudiences      = flag.String("accepted_jwt_audiences", "", "comma-separated acceptable JWT `aud` claims")
 
-	scdGlobalLock = flag.Bool("enable_scd_global_lock", false, "Experimental: Use a global lock when working with SCD subscriptions. Reduce global throughput but improve throughput with lot of subscriptions in the same areas.")
+	scdGlobalLock         = flag.Bool("enable_scd_global_lock", false, "Experimental: Use a global lock when working with SCD subscriptions. Reduce global throughput but improve throughput with lot of subscriptions in the same areas.")
+	scdRelaxedConstraints = flag.Bool("enable_scd_relaxed_constraints", false, "Experimental: Relax constraint validation, allowing for time unbounded entities.")
 )
 
 func createKeyResolver() (auth.KeyResolver, error) {
@@ -135,9 +136,10 @@ func createSCDServer(ctx context.Context, logger *zap.Logger) (*scd.Server, erro
 	}
 
 	return &scd.Server{
-		Store:             scdStore,
-		DSSReportHandler:  &scd.JSONLoggingReceivedReportHandler{ReportLogger: logger},
-		AllowHTTPBaseUrls: *allowHTTPBaseUrls,
+		Store:              scdStore,
+		DSSReportHandler:   &scd.JSONLoggingReceivedReportHandler{ReportLogger: logger},
+		AllowHTTPBaseUrls:  *allowHTTPBaseUrls,
+		RelaxedConstraints: *scdRelaxedConstraints,
 	}, nil
 }
 
@@ -146,8 +148,12 @@ func RunHTTPServer(ctx context.Context, ctxCanceler func(), address, locality st
 	logger := logging.WithValuesFromContext(ctx, logging.Logger).With(zap.String("address", address))
 	logger.Info("version", zap.Any("version", version.Current()))
 	logger.Info("build", zap.Any("description", build.Describe()))
-	logger.Info("config", zap.Bool("scd", *enableSCD))
-	logger.Info("config", zap.Bool("scdGlobalLock", *scdGlobalLock))
+	logger.Info(
+		"config",
+		zap.Bool("scd", *enableSCD),
+		zap.Bool("scdGlobalLock", *scdGlobalLock),
+		zap.Bool("scdRelaxedConstraints", *scdRelaxedConstraints),
+	)
 
 	if len(*jwtAudiences) == 0 {
 		// TODO: Make this flag required once all parties can set audiences
