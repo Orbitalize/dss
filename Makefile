@@ -120,6 +120,7 @@ dss_apis: openapi-to-go-server
       	-v "$(CURDIR)/interfaces/astm-utm/Protocol/utm.yaml:/resources/scdv1.yaml" \
       	-v "$(CURDIR)/interfaces/rid/v1/remoteid/augmented.yaml:/resources/ridv1.yaml" \
         -v "$(CURDIR)/interfaces/rid/v2/remoteid/updated.yaml:/resources/ridv2.yaml" \
+		-v "$(CURDIR)/interfaces/cis-interfaces/surveillance/surveillance.yaml:/resources/surveillancev0.yaml" \
 	    -v "$(CURDIR)/:/resources/src" \
 			interuss/openapi-to-go-server \
 		  		--api_import github.com/interuss/dss/pkg/api \
@@ -127,6 +128,7 @@ dss_apis: openapi-to-go-server
     	      	--api /resources/scdv1.yaml#dss \
 				--api /resources/ridv1.yaml#dss \
               	--api /resources/ridv2.yaml#dss@ridv2/rid/v2 \
+				--api /resources/surveillancev0.yaml#dss@surveillancev0/surveillance/v0 \
     	      	--api_folder /resources/src/pkg/api
 
 example_apis: openapi-to-go-server

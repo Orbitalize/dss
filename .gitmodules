@@ -10,3 +10,6 @@
 [submodule "interfaces/automated_testing_interfaces"]
 	path = interfaces/automated_testing_interfaces
 	url = https://github.com/interuss/automated_testing_interfaces.git
+[submodule "interfaces/cis-interfaces"]
+	path = interfaces/cis-interfaces
+	url = https://github.com/skyguide-ansp/cis-interfaces.git

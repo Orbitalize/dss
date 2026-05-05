@@ -1,0 +1,640 @@
+// This file is auto-generated; do not change as any changes will be overwritten
+package surveillancev0
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/interuss/dss/pkg/api"
+	dsserr "github.com/interuss/dss/pkg/errors"
+	"github.com/interuss/stacktrace"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
+	"net/http"
+	"regexp"
+)
+
+type APIRouter struct {
+	Routes         []*api.Route
+	Implementation Implementation
+	Authorizer     api.Authorizer
+}
+
+var tracer = otel.Tracer("surveillancev0.api")
+
+// *surveillancev0.APIRouter (type defined above) implements the api.PartialRouter interface
+func (s *APIRouter) Handle(w http.ResponseWriter, r *http.Request) bool {
+	for _, route := range s.Routes {
+		if route.Method == r.Method && route.Pattern.MatchString(r.URL.Path) {
+
+			// We retrieve the current span from the otelhttp handler to set its name property.
+			span := trace.SpanFromContext(r.Context())
+
+			if span.IsRecording() { // If the span is not recording, the name cannot be changed. This also likely means the otelhttp handler is not present (tracing disabled).
+				span.SetName(fmt.Sprintf("%s %s", r.Method, route.Path))
+			}
+
+			ctx, span := tracer.Start(r.Context(), route.Name)
+			defer span.End()
+			r = r.WithContext(ctx)
+
+			route.Handler(route.Pattern, w, r)
+			return true
+		}
+	}
+	return false
+}
+
+func setAuthError(ctx context.Context, authErr error, resp401 **ErrorResponse, resp403 **ErrorResponse, resp500 **api.InternalServerErrorBody) {
+	switch stacktrace.GetCode(authErr) {
+	case dsserr.Unauthenticated:
+		*resp401 = &ErrorResponse{Message: dsserr.Handle(ctx, stacktrace.Propagate(authErr, "Authentication failed"))}
+	case dsserr.PermissionDenied:
+		*resp403 = &ErrorResponse{Message: dsserr.Handle(ctx, stacktrace.Propagate(authErr, "Authorization failed"))}
+	default:
+
+		if authErr == nil {
+			authErr = stacktrace.NewError("Unknown error")
+		}
+
+		*resp500 = &api.InternalServerErrorBody{ErrorMessage: *dsserr.Handle(ctx, stacktrace.Propagate(authErr, "Could not perform authorization"))}
+	}
+}
+
+func (s *APIRouter) SearchTrafficSurveilledAreas(exp *regexp.Regexp, w http.ResponseWriter, r *http.Request) {
+	var req SearchTrafficSurveilledAreasRequest
+	var response SearchTrafficSurveilledAreasResponseSet
+
+	// Copy query parameters
+	query := r.URL.Query()
+	if query.Has("area") {
+		v := GeoPolygonString(query.Get("area"))
+		req.Area = &v
+	}
+	if query.Has("earliest_time") {
+		v := query.Get("earliest_time")
+		req.EarliestTime = &v
+	}
+	if query.Has("latest_time") {
+		v := query.Get("latest_time")
+		req.LatestTime = &v
+	}
+
+	// Authorize request
+	req.Auth = s.Authorizer.Authorize(w, r, SearchTrafficSurveilledAreasSecurity)
+	// Verify authorization
+	if req.Auth.Error != nil {
+		setAuthError(r.Context(), stacktrace.Propagate(req.Auth.Error, "Auth failed"), &response.Response401, &response.Response403, &response.Response500)
+	} else {
+		// Call implementation
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		response = s.Implementation.SearchTrafficSurveilledAreas(ctx, &req)
+	}
+
+	// Write response to client
+	if response.Response200 != nil {
+		api.WriteJSON(w, 200, response.Response200)
+		return
+	}
+	if response.Response400 != nil {
+		api.WriteJSON(w, 400, response.Response400)
+		return
+	}
+	if response.Response401 != nil {
+		api.WriteJSON(w, 401, response.Response401)
+		return
+	}
+	if response.Response403 != nil {
+		api.WriteJSON(w, 403, response.Response403)
+		return
+	}
+	if response.Response413 != nil {
+		api.WriteJSON(w, 413, response.Response413)
+		return
+	}
+	if response.Response500 != nil {
+		api.WriteJSON(w, 500, response.Response500)
+		return
+	}
+	api.WriteJSON(w, 500, api.InternalServerErrorBody{ErrorMessage: "Handler implementation did not set a response"})
+}
+
+func (s *APIRouter) GetTrafficSurveilledArea(exp *regexp.Regexp, w http.ResponseWriter, r *http.Request) {
+	var req GetTrafficSurveilledAreaRequest
+	var response GetTrafficSurveilledAreaResponseSet
+
+	// Parse path parameters
+	pathMatch := exp.FindStringSubmatch(r.URL.Path)
+	req.Id = EntityUUID(pathMatch[1])
+
+	// Authorize request
+	req.Auth = s.Authorizer.Authorize(w, r, GetTrafficSurveilledAreaSecurity)
+	// Verify authorization
+	if req.Auth.Error != nil {
+		setAuthError(r.Context(), stacktrace.Propagate(req.Auth.Error, "Auth failed"), &response.Response401, &response.Response403, &response.Response500)
+	} else {
+		// Call implementation
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		response = s.Implementation.GetTrafficSurveilledArea(ctx, &req)
+	}
+
+	// Write response to client
+	if response.Response200 != nil {
+		api.WriteJSON(w, 200, response.Response200)
+		return
+	}
+	if response.Response400 != nil {
+		api.WriteJSON(w, 400, response.Response400)
+		return
+	}
+	if response.Response401 != nil {
+		api.WriteJSON(w, 401, response.Response401)
+		return
+	}
+	if response.Response403 != nil {
+		api.WriteJSON(w, 403, response.Response403)
+		return
+	}
+	if response.Response404 != nil {
+		api.WriteJSON(w, 404, response.Response404)
+		return
+	}
+	if response.Response500 != nil {
+		api.WriteJSON(w, 500, response.Response500)
+		return
+	}
+	api.WriteJSON(w, 500, api.InternalServerErrorBody{ErrorMessage: "Handler implementation did not set a response"})
+}
+
+func (s *APIRouter) CreateTrafficSurveilledArea(exp *regexp.Regexp, w http.ResponseWriter, r *http.Request) {
+	var req CreateTrafficSurveilledAreaRequest
+	var response CreateTrafficSurveilledAreaResponseSet
+
+	// Parse path parameters
+	pathMatch := exp.FindStringSubmatch(r.URL.Path)
+	req.Id = EntityUUID(pathMatch[1])
+
+	// Parse request body
+	req.Body = new(CreateTrafficSurveilledAreaParameters)
+	defer r.Body.Close()
+	req.BodyParseError = json.NewDecoder(r.Body).Decode(req.Body)
+
+	// Authorize request
+	req.Auth = s.Authorizer.Authorize(w, r, CreateTrafficSurveilledAreaSecurity)
+	// Verify authorization
+	if req.Auth.Error != nil {
+		setAuthError(r.Context(), stacktrace.Propagate(req.Auth.Error, "Auth failed"), &response.Response401, &response.Response403, &response.Response500)
+	} else {
+		// Call implementation
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		response = s.Implementation.CreateTrafficSurveilledArea(ctx, &req)
+	}
+
+	// Write response to client
+	if response.Response200 != nil {
+		api.WriteJSON(w, 200, response.Response200)
+		return
+	}
+	if response.Response400 != nil {
+		api.WriteJSON(w, 400, response.Response400)
+		return
+	}
+	if response.Response401 != nil {
+		api.WriteJSON(w, 401, response.Response401)
+		return
+	}
+	if response.Response403 != nil {
+		api.WriteJSON(w, 403, response.Response403)
+		return
+	}
+	if response.Response409 != nil {
+		api.WriteJSON(w, 409, response.Response409)
+		return
+	}
+	if response.Response413 != nil {
+		api.WriteJSON(w, 413, response.Response413)
+		return
+	}
+	if response.Response500 != nil {
+		api.WriteJSON(w, 500, response.Response500)
+		return
+	}
+	api.WriteJSON(w, 500, api.InternalServerErrorBody{ErrorMessage: "Handler implementation did not set a response"})
+}
+
+func (s *APIRouter) UpdateTrafficSurveilledArea(exp *regexp.Regexp, w http.ResponseWriter, r *http.Request) {
+	var req UpdateTrafficSurveilledAreaRequest
+	var response UpdateTrafficSurveilledAreaResponseSet
+
+	// Parse path parameters
+	pathMatch := exp.FindStringSubmatch(r.URL.Path)
+	req.Id = EntityUUID(pathMatch[1])
+	req.Version = pathMatch[2]
+
+	// Parse request body
+	req.Body = new(UpdateTrafficSurveilledAreaParameters)
+	defer r.Body.Close()
+	req.BodyParseError = json.NewDecoder(r.Body).Decode(req.Body)
+
+	// Authorize request
+	req.Auth = s.Authorizer.Authorize(w, r, UpdateTrafficSurveilledAreaSecurity)
+	// Verify authorization
+	if req.Auth.Error != nil {
+		setAuthError(r.Context(), stacktrace.Propagate(req.Auth.Error, "Auth failed"), &response.Response401, &response.Response403, &response.Response500)
+	} else {
+		// Call implementation
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		response = s.Implementation.UpdateTrafficSurveilledArea(ctx, &req)
+	}
+
+	// Write response to client
+	if response.Response200 != nil {
+		api.WriteJSON(w, 200, response.Response200)
+		return
+	}
+	if response.Response400 != nil {
+		api.WriteJSON(w, 400, response.Response400)
+		return
+	}
+	if response.Response401 != nil {
+		api.WriteJSON(w, 401, response.Response401)
+		return
+	}
+	if response.Response403 != nil {
+		api.WriteJSON(w, 403, response.Response403)
+		return
+	}
+	if response.Response409 != nil {
+		api.WriteJSON(w, 409, response.Response409)
+		return
+	}
+	if response.Response413 != nil {
+		api.WriteJSON(w, 413, response.Response413)
+		return
+	}
+	if response.Response500 != nil {
+		api.WriteJSON(w, 500, response.Response500)
+		return
+	}
+	api.WriteJSON(w, 500, api.InternalServerErrorBody{ErrorMessage: "Handler implementation did not set a response"})
+}
+
+func (s *APIRouter) DeleteTrafficSurveilledArea(exp *regexp.Regexp, w http.ResponseWriter, r *http.Request) {
+	var req DeleteTrafficSurveilledAreaRequest
+	var response DeleteTrafficSurveilledAreaResponseSet
+
+	// Parse path parameters
+	pathMatch := exp.FindStringSubmatch(r.URL.Path)
+	req.Id = EntityUUID(pathMatch[1])
+	req.Version = pathMatch[2]
+
+	// Authorize request
+	req.Auth = s.Authorizer.Authorize(w, r, DeleteTrafficSurveilledAreaSecurity)
+	// Verify authorization
+	if req.Auth.Error != nil {
+		setAuthError(r.Context(), stacktrace.Propagate(req.Auth.Error, "Auth failed"), &response.Response401, &response.Response403, &response.Response500)
+	} else {
+		// Call implementation
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		response = s.Implementation.DeleteTrafficSurveilledArea(ctx, &req)
+	}
+
+	// Write response to client
+	if response.Response200 != nil {
+		api.WriteJSON(w, 200, response.Response200)
+		return
+	}
+	if response.Response400 != nil {
+		api.WriteJSON(w, 400, response.Response400)
+		return
+	}
+	if response.Response401 != nil {
+		api.WriteJSON(w, 401, response.Response401)
+		return
+	}
+	if response.Response403 != nil {
+		api.WriteJSON(w, 403, response.Response403)
+		return
+	}
+	if response.Response404 != nil {
+		api.WriteJSON(w, 404, response.Response404)
+		return
+	}
+	if response.Response409 != nil {
+		api.WriteJSON(w, 409, response.Response409)
+		return
+	}
+	if response.Response500 != nil {
+		api.WriteJSON(w, 500, response.Response500)
+		return
+	}
+	api.WriteJSON(w, 500, api.InternalServerErrorBody{ErrorMessage: "Handler implementation did not set a response"})
+}
+
+func (s *APIRouter) SearchSubscriptions(exp *regexp.Regexp, w http.ResponseWriter, r *http.Request) {
+	var req SearchSubscriptionsRequest
+	var response SearchSubscriptionsResponseSet
+
+	// Copy query parameters
+	query := r.URL.Query()
+	if query.Has("area") {
+		v := GeoPolygonString(query.Get("area"))
+		req.Area = &v
+	}
+
+	// Authorize request
+	req.Auth = s.Authorizer.Authorize(w, r, SearchSubscriptionsSecurity)
+	// Verify authorization
+	if req.Auth.Error != nil {
+		setAuthError(r.Context(), stacktrace.Propagate(req.Auth.Error, "Auth failed"), &response.Response401, &response.Response403, &response.Response500)
+	} else {
+		// Call implementation
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		response = s.Implementation.SearchSubscriptions(ctx, &req)
+	}
+
+	// Write response to client
+	if response.Response200 != nil {
+		api.WriteJSON(w, 200, response.Response200)
+		return
+	}
+	if response.Response400 != nil {
+		api.WriteJSON(w, 400, response.Response400)
+		return
+	}
+	if response.Response401 != nil {
+		api.WriteJSON(w, 401, response.Response401)
+		return
+	}
+	if response.Response403 != nil {
+		api.WriteJSON(w, 403, response.Response403)
+		return
+	}
+	if response.Response413 != nil {
+		api.WriteJSON(w, 413, response.Response413)
+		return
+	}
+	if response.Response500 != nil {
+		api.WriteJSON(w, 500, response.Response500)
+		return
+	}
+	api.WriteJSON(w, 500, api.InternalServerErrorBody{ErrorMessage: "Handler implementation did not set a response"})
+}
+
+func (s *APIRouter) GetSubscription(exp *regexp.Regexp, w http.ResponseWriter, r *http.Request) {
+	var req GetSubscriptionRequest
+	var response GetSubscriptionResponseSet
+
+	// Parse path parameters
+	pathMatch := exp.FindStringSubmatch(r.URL.Path)
+	req.Id = SubscriptionUUID(pathMatch[1])
+
+	// Authorize request
+	req.Auth = s.Authorizer.Authorize(w, r, GetSubscriptionSecurity)
+	// Verify authorization
+	if req.Auth.Error != nil {
+		setAuthError(r.Context(), stacktrace.Propagate(req.Auth.Error, "Auth failed"), &response.Response401, &response.Response403, &response.Response500)
+	} else {
+		// Call implementation
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		response = s.Implementation.GetSubscription(ctx, &req)
+	}
+
+	// Write response to client
+	if response.Response200 != nil {
+		api.WriteJSON(w, 200, response.Response200)
+		return
+	}
+	if response.Response400 != nil {
+		api.WriteJSON(w, 400, response.Response400)
+		return
+	}
+	if response.Response401 != nil {
+		api.WriteJSON(w, 401, response.Response401)
+		return
+	}
+	if response.Response403 != nil {
+		api.WriteJSON(w, 403, response.Response403)
+		return
+	}
+	if response.Response404 != nil {
+		api.WriteJSON(w, 404, response.Response404)
+		return
+	}
+	if response.Response500 != nil {
+		api.WriteJSON(w, 500, response.Response500)
+		return
+	}
+	api.WriteJSON(w, 500, api.InternalServerErrorBody{ErrorMessage: "Handler implementation did not set a response"})
+}
+
+func (s *APIRouter) CreateSubscription(exp *regexp.Regexp, w http.ResponseWriter, r *http.Request) {
+	var req CreateSubscriptionRequest
+	var response CreateSubscriptionResponseSet
+
+	// Parse path parameters
+	pathMatch := exp.FindStringSubmatch(r.URL.Path)
+	req.Id = SubscriptionUUID(pathMatch[1])
+
+	// Parse request body
+	req.Body = new(CreateSubscriptionParameters)
+	defer r.Body.Close()
+	req.BodyParseError = json.NewDecoder(r.Body).Decode(req.Body)
+
+	// Authorize request
+	req.Auth = s.Authorizer.Authorize(w, r, CreateSubscriptionSecurity)
+	// Verify authorization
+	if req.Auth.Error != nil {
+		setAuthError(r.Context(), stacktrace.Propagate(req.Auth.Error, "Auth failed"), &response.Response401, &response.Response403, &response.Response500)
+	} else {
+		// Call implementation
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		response = s.Implementation.CreateSubscription(ctx, &req)
+	}
+
+	// Write response to client
+	if response.Response200 != nil {
+		api.WriteJSON(w, 200, response.Response200)
+		return
+	}
+	if response.Response400 != nil {
+		api.WriteJSON(w, 400, response.Response400)
+		return
+	}
+	if response.Response401 != nil {
+		api.WriteJSON(w, 401, response.Response401)
+		return
+	}
+	if response.Response403 != nil {
+		api.WriteJSON(w, 403, response.Response403)
+		return
+	}
+	if response.Response409 != nil {
+		api.WriteJSON(w, 409, response.Response409)
+		return
+	}
+	if response.Response429 != nil {
+		api.WriteJSON(w, 429, response.Response429)
+		return
+	}
+	if response.Response500 != nil {
+		api.WriteJSON(w, 500, response.Response500)
+		return
+	}
+	api.WriteJSON(w, 500, api.InternalServerErrorBody{ErrorMessage: "Handler implementation did not set a response"})
+}
+
+func (s *APIRouter) UpdateSubscription(exp *regexp.Regexp, w http.ResponseWriter, r *http.Request) {
+	var req UpdateSubscriptionRequest
+	var response UpdateSubscriptionResponseSet
+
+	// Parse path parameters
+	pathMatch := exp.FindStringSubmatch(r.URL.Path)
+	req.Id = SubscriptionUUID(pathMatch[1])
+	req.Version = pathMatch[2]
+
+	// Parse request body
+	req.Body = new(UpdateSubscriptionParameters)
+	defer r.Body.Close()
+	req.BodyParseError = json.NewDecoder(r.Body).Decode(req.Body)
+
+	// Authorize request
+	req.Auth = s.Authorizer.Authorize(w, r, UpdateSubscriptionSecurity)
+	// Verify authorization
+	if req.Auth.Error != nil {
+		setAuthError(r.Context(), stacktrace.Propagate(req.Auth.Error, "Auth failed"), &response.Response401, &response.Response403, &response.Response500)
+	} else {
+		// Call implementation
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		response = s.Implementation.UpdateSubscription(ctx, &req)
+	}
+
+	// Write response to client
+	if response.Response200 != nil {
+		api.WriteJSON(w, 200, response.Response200)
+		return
+	}
+	if response.Response400 != nil {
+		api.WriteJSON(w, 400, response.Response400)
+		return
+	}
+	if response.Response401 != nil {
+		api.WriteJSON(w, 401, response.Response401)
+		return
+	}
+	if response.Response403 != nil {
+		api.WriteJSON(w, 403, response.Response403)
+		return
+	}
+	if response.Response409 != nil {
+		api.WriteJSON(w, 409, response.Response409)
+		return
+	}
+	if response.Response429 != nil {
+		api.WriteJSON(w, 429, response.Response429)
+		return
+	}
+	if response.Response500 != nil {
+		api.WriteJSON(w, 500, response.Response500)
+		return
+	}
+	api.WriteJSON(w, 500, api.InternalServerErrorBody{ErrorMessage: "Handler implementation did not set a response"})
+}
+
+func (s *APIRouter) DeleteSubscription(exp *regexp.Regexp, w http.ResponseWriter, r *http.Request) {
+	var req DeleteSubscriptionRequest
+	var response DeleteSubscriptionResponseSet
+
+	// Parse path parameters
+	pathMatch := exp.FindStringSubmatch(r.URL.Path)
+	req.Id = SubscriptionUUID(pathMatch[1])
+	req.Version = pathMatch[2]
+
+	// Authorize request
+	req.Auth = s.Authorizer.Authorize(w, r, DeleteSubscriptionSecurity)
+	// Verify authorization
+	if req.Auth.Error != nil {
+		setAuthError(r.Context(), stacktrace.Propagate(req.Auth.Error, "Auth failed"), &response.Response401, &response.Response403, &response.Response500)
+	} else {
+		// Call implementation
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+		response = s.Implementation.DeleteSubscription(ctx, &req)
+	}
+
+	// Write response to client
+	if response.Response200 != nil {
+		api.WriteJSON(w, 200, response.Response200)
+		return
+	}
+	if response.Response400 != nil {
+		api.WriteJSON(w, 400, response.Response400)
+		return
+	}
+	if response.Response401 != nil {
+		api.WriteJSON(w, 401, response.Response401)
+		return
+	}
+	if response.Response403 != nil {
+		api.WriteJSON(w, 403, response.Response403)
+		return
+	}
+	if response.Response404 != nil {
+		api.WriteJSON(w, 404, response.Response404)
+		return
+	}
+	if response.Response409 != nil {
+		api.WriteJSON(w, 409, response.Response409)
+		return
+	}
+	if response.Response500 != nil {
+		api.WriteJSON(w, 500, response.Response500)
+		return
+	}
+	api.WriteJSON(w, 500, api.InternalServerErrorBody{ErrorMessage: "Handler implementation did not set a response"})
+}
+
+func MakeAPIRouter(impl Implementation, auth api.Authorizer) APIRouter {
+	router := APIRouter{Implementation: impl, Authorizer: auth, Routes: make([]*api.Route, 10)}
+
+	pattern := regexp.MustCompile("^/surveillance/v0/dss/traffic_surveilled_areas$")
+	router.Routes[0] = &api.Route{Method: http.MethodGet, Pattern: pattern, Handler: router.SearchTrafficSurveilledAreas, Name: "surveillancev0.SearchTrafficSurveilledAreas", Path: "/surveillance/v0/dss/traffic_surveilled_areas"}
+
+	pattern = regexp.MustCompile("^/surveillance/v0/dss/traffic_surveilled_areas/(?P<id>[^/]*)$")
+	router.Routes[1] = &api.Route{Method: http.MethodGet, Pattern: pattern, Handler: router.GetTrafficSurveilledArea, Name: "surveillancev0.GetTrafficSurveilledArea", Path: "/surveillance/v0/dss/traffic_surveilled_areas/{id}"}
+
+	pattern = regexp.MustCompile("^/surveillance/v0/dss/traffic_surveilled_areas/(?P<id>[^/]*)$")
+	router.Routes[2] = &api.Route{Method: http.MethodPut, Pattern: pattern, Handler: router.CreateTrafficSurveilledArea, Name: "surveillancev0.CreateTrafficSurveilledArea", Path: "/surveillance/v0/dss/traffic_surveilled_areas/{id}"}
+
+	pattern = regexp.MustCompile("^/surveillance/v0/dss/traffic_surveilled_areas/(?P<id>[^/]*)/(?P<version>[^/]*)$")
+	router.Routes[3] = &api.Route{Method: http.MethodPut, Pattern: pattern, Handler: router.UpdateTrafficSurveilledArea, Name: "surveillancev0.UpdateTrafficSurveilledArea", Path: "/surveillance/v0/dss/traffic_surveilled_areas/{id}/{version}"}
+
+	pattern = regexp.MustCompile("^/surveillance/v0/dss/traffic_surveilled_areas/(?P<id>[^/]*)/(?P<version>[^/]*)$")
+	router.Routes[4] = &api.Route{Method: http.MethodDelete, Pattern: pattern, Handler: router.DeleteTrafficSurveilledArea, Name: "surveillancev0.DeleteTrafficSurveilledArea", Path: "/surveillance/v0/dss/traffic_surveilled_areas/{id}/{version}"}
+
+	pattern = regexp.MustCompile("^/surveillance/v0/dss/subscriptions$")
+	router.Routes[5] = &api.Route{Method: http.MethodGet, Pattern: pattern, Handler: router.SearchSubscriptions, Name: "surveillancev0.SearchSubscriptions", Path: "/surveillance/v0/dss/subscriptions"}
+
+	pattern = regexp.MustCompile("^/surveillance/v0/dss/subscriptions/(?P<id>[^/]*)$")
+	router.Routes[6] = &api.Route{Method: http.MethodGet, Pattern: pattern, Handler: router.GetSubscription, Name: "surveillancev0.GetSubscription", Path: "/surveillance/v0/dss/subscriptions/{id}"}
+
+	pattern = regexp.MustCompile("^/surveillance/v0/dss/subscriptions/(?P<id>[^/]*)$")
+	router.Routes[7] = &api.Route{Method: http.MethodPut, Pattern: pattern, Handler: router.CreateSubscription, Name: "surveillancev0.CreateSubscription", Path: "/surveillance/v0/dss/subscriptions/{id}"}
+
+	pattern = regexp.MustCompile("^/surveillance/v0/dss/subscriptions/(?P<id>[^/]*)/(?P<version>[^/]*)$")
+	router.Routes[8] = &api.Route{Method: http.MethodPut, Pattern: pattern, Handler: router.UpdateSubscription, Name: "surveillancev0.UpdateSubscription", Path: "/surveillance/v0/dss/subscriptions/{id}/{version}"}
+
+	pattern = regexp.MustCompile("^/surveillance/v0/dss/subscriptions/(?P<id>[^/]*)/(?P<version>[^/]*)$")
+	router.Routes[9] = &api.Route{Method: http.MethodDelete, Pattern: pattern, Handler: router.DeleteSubscription, Name: "surveillancev0.DeleteSubscription", Path: "/surveillance/v0/dss/subscriptions/{id}/{version}"}
+
+	return router
+}
