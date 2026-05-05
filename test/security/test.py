@@ -33,6 +33,8 @@ ALL_SCOPES = [
     "interuss.pool_status.read",
     "interuss.pool_status.heartbeat.write",
     "utm.availability_arbitration",
+    "surveillance.service_provider",
+    "surveillance.display_provider",
 ]
 
 

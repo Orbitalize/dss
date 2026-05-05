@@ -18,6 +18,7 @@ import (
 	apiridv1 "github.com/interuss/dss/pkg/api/ridv1"
 	apiridv2 "github.com/interuss/dss/pkg/api/ridv2"
 	apiscdv1 "github.com/interuss/dss/pkg/api/scdv1"
+	apisurveillancev0 "github.com/interuss/dss/pkg/api/surveillancev0"
 	apiversioningv1 "github.com/interuss/dss/pkg/api/versioningv1"
 	"github.com/interuss/dss/pkg/auth"
 	aux "github.com/interuss/dss/pkg/aux_"
@@ -31,6 +32,7 @@ import (
 	"github.com/interuss/dss/pkg/scd"
 	scds "github.com/interuss/dss/pkg/scd/store"
 	"github.com/interuss/dss/pkg/store"
+	surveillance "github.com/interuss/dss/pkg/surveillance/server"
 	"github.com/interuss/dss/pkg/version"
 	"github.com/interuss/dss/pkg/versioning"
 	"github.com/interuss/stacktrace"
@@ -129,6 +131,10 @@ func createRIDServers(ctx context.Context, locality string, logger *zap.Logger) 
 		}, nil
 }
 
+func createSurveillanceServer(ctx context.Context, locality string, logger *zap.Logger) (*surveillance.Server, error) {
+	return &surveillance.Server{}, nil
+}
+
 func createSCDServer(ctx context.Context, logger *zap.Logger) (*scd.Server, error) {
 
 	scdStore, err := scds.Init(ctx, logger, true, *scdGlobalLock)
@@ -166,6 +172,7 @@ func RunHTTPServer(ctx context.Context, ctxCanceler func(), address, locality st
 		err                error
 		ridV1Server        *rid_v1.Server
 		ridV2Server        *rid_v2.Server
+		surveillanceServer *surveillance.Server
 		scdV1Server        *scd.Server
 		auxV1Server        *aux.Server
 		versioningV1Server = &versioning.Server{}
@@ -184,6 +191,12 @@ func RunHTTPServer(ctx context.Context, ctxCanceler func(), address, locality st
 	ridV1Server, ridV2Server, err = createRIDServers(ctx, locality, logger)
 	if err != nil {
 		return stacktrace.Propagate(err, "Failed to create remote ID server")
+	}
+
+	// Initialize surveillance
+	surveillanceServer, err = createSurveillanceServer(ctx, locality, logger)
+	if err != nil {
+		return stacktrace.Propagate(err, "Failed to create surveillance server")
 	}
 
 	// Initialize access token validation
@@ -210,12 +223,14 @@ func RunHTTPServer(ctx context.Context, ctxCanceler func(), address, locality st
 	versioningV1Router := apiversioningv1.MakeAPIRouter(versioningV1Server, authorizer)
 	ridV1Router := apiridv1.MakeAPIRouter(ridV1Server, authorizer)
 	ridV2Router := apiridv2.MakeAPIRouter(ridV2Server, authorizer)
+	surveillancev0Router := apisurveillancev0.MakeAPIRouter(surveillanceServer, authorizer)
 	multiRouter := api.MultiRouter{
 		Routers: []api.PartialRouter{
 			&auxV1Router,
 			&versioningV1Router,
 			&ridV1Router,
 			&ridV2Router,
+			&surveillancev0Router,
 		}}
 
 	// Initialize strategic conflict detection
