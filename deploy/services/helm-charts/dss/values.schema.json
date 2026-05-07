@@ -327,6 +327,29 @@
                       "type": "boolean"
                     }
                   }
+                },
+                "surveillance": {
+                  "description": "Surveillance Related configuration",
+                  "type": "object",
+                  "properties": {
+                    "enableCron": {
+                      "type": "boolean"
+                    },
+                    "schedule": {
+                      "type": "string",
+                      "description": "In cron format (https://crontab.guru/)"
+                    },
+                    "ttl": {
+                      "type": "string",
+                      "description": "Go duration format (https://pkg.go.dev/time#ParseDuration)"
+                    },
+                    "TSAs": {
+                      "type": "boolean"
+                    },
+                    "subscriptions": {
+                      "type": "boolean"
+                    }
+                  }
                 }
               }
             }

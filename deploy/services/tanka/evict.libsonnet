@@ -22,9 +22,11 @@ local datastoreparameters = import 'datastoreparameters.libsonnet';
                   args_:: {
                       scd_oir: metadata.evict.scd.operational_intents,
                       scd_sub: metadata.evict.scd.subscriptions,
+                      scd_ttl: metadata.evict.scd.ttl,
                       rid_isa: false,
                       rid_sub: false,
-                      scd_ttl: metadata.evict.scd.ttl,
+                      surveillance_tsa: false,
+                      surveillance_sub: false,
                   } + datastoreparameters.all(metadata),
                   volumeMounts: volumes.all(metadata).schemaMounts,
                 }],
@@ -55,6 +57,38 @@ local datastoreparameters = import 'datastoreparameters.libsonnet';
                       rid_isa: metadata.evict.rid.ISAs,
                       rid_sub: metadata.evict.rid.subscriptions,
                       rid_ttl: metadata.evict.rid.ttl,
+                      surveillance_tsa: false,
+                      surveillance_sub: false,
+                  } + datastoreparameters.all(metadata),
+                  volumeMounts: volumes.all(metadata).schemaMounts,
+                }],
+              },
+            },
+          },
+        },
+      },
+    },
+    SurveillanceEvict: base.CronJob(metadata, 'dss-surveillance-evict') {
+      spec+: {
+        schedule: metadata.evict.surveillance.schedule,
+        suspend: !metadata.evict.surveillance.enable_cron,
+        concurrencyPolicy: "Forbid",
+        jobTemplate: {
+          spec: {
+            template: {
+              spec: {
+                volumes: volumes.all(metadata).schemaVolumes,
+                restartPolicy: "Never",
+                containers: [base.Container('dss-surveillance-evict') {
+                  image: metadata.schema_manager.image,
+                  imagePullPolicy: if metadata.cloud_provider == "minikube" then 'IfNotPresent' else 'Always',
+                  command: ['db-manager', 'evict'],
+                  args_:: {
+                      scd_oir: false,
+                      scd_sub: false,
+                      surveillance_tsa: metadata.evict.surveillance.TSAs,
+                      surveillance_sub: metadata.evict.surveillance.subscriptions,
+                      surveillance_ttl: metadata.evict.surveillance.ttl,
                   } + datastoreparameters.all(metadata),
                   volumeMounts: volumes.all(metadata).schemaMounts,
                 }],

@@ -16,6 +16,12 @@ dss:
           ttl: 30m
           ISAs: true
           subscriptions: true
+      surveillance:
+          enableCron: false
+          schedule: "*/30 * * * *"
+          ttl: 30m
+          TSAs: true
+          subscriptions: true
 
 
 cockroachdb:

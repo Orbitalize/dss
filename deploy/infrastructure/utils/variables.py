@@ -41,6 +41,7 @@ COMMONS_DSS_VARIABLES = GLOBAL_VARIABLES + [
     "enable_scd_global_lock",
     "should_init",
     "desired_rid_db_version",
+    "desired_surveillance_db_version",
     "desired_scd_db_version",
     "desired_aux_db_version",
     "crdb_image_tag",
@@ -63,6 +64,10 @@ COMMONS_DSS_VARIABLES = GLOBAL_VARIABLES + [
     "evict_rid_ttl",
     "evict_rid_isas",
     "evict_rid_subscriptions",
+    "evict_surveillance_schedule",
+    "evict_surveillance_ttl",
+    "evict_surveillance_tsas",
+    "evict_surveillance_subscriptions",
     "enable_monitoring",
 ]
 

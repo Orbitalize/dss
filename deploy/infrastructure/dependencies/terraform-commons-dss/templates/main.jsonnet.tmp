@@ -81,6 +81,13 @@ local metadata = metadataBase {
       ISAs: ${VAR_EVICT_RID_ENABLE_ISAS},
       subscriptions: ${VAR_EVICT_RID_ENABLE_SUBSCRIPTIONS},
     },
+    surveillance+: {
+      enable_cron: ${VAR_EVICT_ENABLE_SURVEILLANCE_CRON},
+      schedule: "${VAR_EVICT_SURVEILLANCE_SCHEDULE}",
+      ttl: "${VAR_EVICT_SURVEILLANCE_TTL}",
+      TSAs: ${VAR_EVICT_SURVEILLANCE_ENABLE_TSAS},
+      subscriptions: ${VAR_EVICT_SURVEILLANCE_ENABLE_SUBSCRIPTIONS},
+    },
   },
   prometheus+: {
     storageClass: '${VAR_STORAGE_CLASS}',

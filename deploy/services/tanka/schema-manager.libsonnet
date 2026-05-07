@@ -25,6 +25,25 @@ local datastoreparameters = import 'datastoreparameters.libsonnet';
         },
       },
     } else null,
+    SurveillanceSchemaManager: if metadata.cockroach.shouldInit || metadata.schema_manager.enable then base.Job(metadata, 'surveillance-schema-manager') {
+      spec+: {
+        template+: {
+          spec+: {
+            volumes: volumes.all(metadata).schemaVolumes,
+            soloContainer:: base.Container('surveillance-schema-manager') {
+              image: metadata.schema_manager.image,
+              imagePullPolicy: if metadata.cloud_provider == "minikube" then 'IfNotPresent' else 'Always',
+              command: ['db-manager', 'migrate'],
+              args_:: {
+                db_version: metadata.schema_manager.desired_surveillance_db_version,
+                schemas_dir: schema_dir + '/surveillance',
+              } + datastoreparameters.all(metadata),
+              volumeMounts: volumes.all(metadata).schemaMounts,
+            },
+          },
+        },
+      },
+    } else null,
     SCDSchemaManager: if (metadata.cockroach.shouldInit || metadata.schema_manager.enable) && metadata.enableScd then base.Job(metadata, 'scd-schema-manager') {
       spec+: {
         template+: {
