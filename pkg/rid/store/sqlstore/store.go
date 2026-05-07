@@ -42,3 +42,20 @@ func Init(ctx context.Context, logger *zap.Logger, withCheckCron bool) (*sqlstor
 		},
 	}, withCheckCron)
 }
+
+// InitCustom initializes the SQL-backed rid-like store. It return a concrete sqlstore.Store[rid.repos.Repository] providing the
+// ability to interact with a database-backed store of rid-like information.
+func InitCustom(ctx context.Context, dbDname string, crdbMajor int64, ydbMajor int64, logger *zap.Logger, withCheckCron bool) (*sqlstore.Store[repos.Repository], error) {
+	return sqlstore.Init(ctx, sqlstore.Config[repos.Repository]{
+		DBName:                 dbDname,
+		CrdbMajorSchemaVersion: crdbMajor,
+		YbMajorSchemaVersion:   ydbMajor,
+		NewRepo: func(q dssql.Queryable, clock clockwork.Clock, _ *sqlstore.Version) repos.Repository {
+			return &repo{
+				Queryable: q,
+				clock:     clock,
+				logger:    logging.WithValuesFromContext(ctx, logger),
+			}
+		},
+	}, withCheckCron)
+}

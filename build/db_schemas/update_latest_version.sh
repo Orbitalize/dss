@@ -16,30 +16,35 @@ cd "${SCRIPTDIR}"
 
 # Extract version
 CRDB_RID=$(ls rid | grep -oE 'upto-v[0-9]+\.[0-9]+\.[0-9]+' | sed 's/upto-v//' | sort -V | tail -n 1)
+CRDB_SURV=$(ls surveillance | grep -oE 'upto-v[0-9]+\.[0-9]+\.[0-9]+' | sed 's/upto-v//' | sort -V | tail -n 1)
 CRDB_SCD=$(ls scd | grep -oE 'upto-v[0-9]+\.[0-9]+\.[0-9]+' | sed 's/upto-v//' | sort -V | tail -n 1)
 YBDB_RID=$(ls yugabyte/rid | grep -oE 'upto-v[0-9]+\.[0-9]+\.[0-9]+' | sed 's/upto-v//' | sort -V | tail -n 1)
+YBDB_SURV=$(ls yugabyte/surveillance | grep -oE 'upto-v[0-9]+\.[0-9]+\.[0-9]+' | sed 's/upto-v//' | sort -V | tail -n 1)
 YBDB_SCD=$(ls yugabyte/scd | grep -oE 'upto-v[0-9]+\.[0-9]+\.[0-9]+' | sed 's/upto-v//' | sort -V | tail -n 1)
 AUX=$(ls yugabyte/aux_ | grep -oE 'upto-v[0-9]+\.[0-9]+\.[0-9]+' | sed 's/upto-v//' | sort -V | tail -n 1)
 
 # Replace terraform latests
 sed -i -E "s/(rid_db_schema = var\.desired_rid_db_version == \"latest\" \? \(var\.datastore_type == \"cockroachdb\" \? ).*\)/\1\"$CRDB_RID\" : \"$YBDB_RID\")/" "${BASEDIR}/deploy/infrastructure/dependencies/terraform-commons-dss/default_latest.tf"
+sed -i -E "s/(surveillance_db_schema = var\.desired_surveillance_db_version == \"latest\" \? \(var\.datastore_type == \"cockroachdb\" \? ).*\)/\1\"$CRDB_SURV\" : \"$YBDB_SURV\")/" "${BASEDIR}/deploy/infrastructure/dependencies/terraform-commons-dss/default_latest.tf"
 sed -i -E "s/(scd_db_schema = var\.desired_scd_db_version == \"latest\" \? \(var\.datastore_type == \"cockroachdb\" \? ).*\)/\1\"$CRDB_SCD\" : \"$YBDB_SCD\")/" "${BASEDIR}/deploy/infrastructure/dependencies/terraform-commons-dss/default_latest.tf"
 sed -i -E "s/(aux_db_schema = var\.desired_aux_db_version == \"latest\" \? ).* :/\1\"$AUX\" :/" "${BASEDIR}/deploy/infrastructure/dependencies/terraform-commons-dss/default_latest.tf"
 
 # Replace tanka examples / latests
 sed -i -E "s/(desired_rid_db_version: ).*/\1'$YBDB_RID',/" "${BASEDIR}/deploy/services/tanka/examples/minikube/main.jsonnet"
+sed -i -E "s/(desired_surveillance_db_version: ).*/\1'$YBDB_SURV',/" "${BASEDIR}/deploy/services/tanka/examples/minikube/main.jsonnet"
 sed -i -E "s/(desired_scd_db_version: ).*/\1'$YBDB_SCD',/" "${BASEDIR}/deploy/services/tanka/examples/minikube/main.jsonnet"
 sed -i -E "s/(desired_aux_db_version: ).*/\1'$AUX',/" "${BASEDIR}/deploy/services/tanka/examples/minikube/main.jsonnet"
 
 for file in "${BASEDIR}/deploy/services/tanka/metadata_base.libsonnet" "${BASEDIR}/deploy/services/tanka/examples/schema_manager/main.jsonnet" "${BASEDIR}/deploy/services/tanka/examples/minimum/main.jsonnet"; do
     sed -i -E "s/(desired_rid_db_version: ).*/\1'$CRDB_RID',/" "${file}"
+    sed -i -E "s/(desired_surv_db_version: ).*/\1'$CRDB_RID',/" "${file}"
     sed -i -E "s/(desired_scd_db_version: ).*/\1'$CRDB_SCD',/" "${file}"
     sed -i -E "s/(desired_aux_db_version: ).*/\1'$AUX',/" "${file}"
 done
 
 # Replace helm latests
-sed -i -E -e "s/(\\\$schemas := dict ).*}}/\1\"rid\" \"$CRDB_RID\" \"scd\" \"$CRDB_SCD\" \"aux_\" \"$AUX\" }}/" "${BASEDIR}/deploy/services/helm-charts/dss/templates/schema-manager.yaml"
-sed -i -E -e "s/(\\\$schemas = dict ).*}}/\1\"rid\" \"$YBDB_RID\" \"scd\" \"$YBDB_SCD\" \"aux_\" \"$AUX\" }}/" "${BASEDIR}/deploy/services/helm-charts/dss/templates/schema-manager.yaml"
+sed -i -E -e "s/(\\\$schemas := dict ).*}}/\1\"rid\" \"$CRDB_RID\" \"surveillance\" \"$CRDB_SURV\" \"scd\" \"$CRDB_SCD\" \"aux_\" \"$AUX\" }}/" "${BASEDIR}/deploy/services/helm-charts/dss/templates/schema-manager.yaml"
+sed -i -E -e "s/(\\\$schemas = dict ).*}}/\1\"rid\" \"$YBDB_RID\" \"surveillance\" \"$YBDB_SURV\" \"scd\" \"$YBDB_SCD\" \"aux_\" \"$AUX\" }}/" "${BASEDIR}/deploy/services/helm-charts/dss/templates/schema-manager.yaml"
 
 # Generate libsonnet files with list of migrations
 cat <<EOF > rid.libsonnet

@@ -59,6 +59,11 @@ func migrate(cmd *cobra.Command, _ []string) error {
 		dbName = "aux"
 	}
 
+	// surveillance db is same as rid
+	if dbName == "surveillance" {
+		*path = filepath.Dir(*path) + "/rid"
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
 
@@ -187,6 +192,15 @@ func migrate(cmd *cobra.Command, _ []string) error {
 			}
 
 			migrationSQL = sessionConfigurationSQL + fmt.Sprintf("USE %s;\n", dbName) + string(rawMigrationSQL)
+
+			// no db renaming required for surveillance DB
+			if dbName == "surveillance" && newVersion.String() == "4.0.0" && newCurrentStepIndex > currentStepIndex {
+				// upto
+				migrationSQL = sessionConfigurationSQL + fmt.Sprintf("USE %s;\n", dbName) + "UPDATE schema_versions set schema_version = 'v4.0.0' WHERE onerow_enforcer = TRUE;"
+			} else if dbName == "surveillance" && currentVersion.String() == "4.0.0" && newCurrentStepIndex < currentStepIndex {
+				// downfrom
+				migrationSQL = sessionConfigurationSQL + fmt.Sprintf("USE %s;\n", dbName) + "UPDATE schema_versions set schema_version = 'v3.1.1' WHERE onerow_enforcer = TRUE;"
+			}
 		}
 		if isYugabyte {
 			// Migrations do not require database switch in opposite to CRDB.

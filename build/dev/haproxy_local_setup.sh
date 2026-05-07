@@ -132,8 +132,19 @@ docker run --rm --name rid-db-manager \
 	--schemas_dir db-schemas/rid \
 	--db_version "latest" \
 	--datastore_host crdb
-
 sleep 1
+
+echo "Bootstrapping Surveillance Database tables"
+docker run --rm --name surveillance-db-manager \
+	--link dss-crdb-cluster-for-testing:crdb \
+	--network dss_sandbox-default	\
+	local-interuss-dss-image \
+	/usr/bin/db-manager migrate \
+	--schemas_dir db-schemas/surveillance \
+	--db_version "latest" \
+	--datastore_host crdb
+sleep 1
+
 echo "Bootstrapping SCD Database tables"
 docker run --rm --name scd-db-manager \
 	--link dss-crdb-cluster-for-testing:crdb \
