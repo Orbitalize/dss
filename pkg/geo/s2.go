@@ -19,7 +19,7 @@ const (
 	// DefaultMaximumCellLevel is the default minimum cell level, chosen such
 	// that the maximum cell size is ~1km^2.
 	DefaultMaximumCellLevel = 13
-	maxAllowedAreaKm2       = 2500.0
+	maxAllowedAreaKm2       = 10000.0 // equal to CstrMaxArea
 	radiusEarthMeter        = 6371010.0
 
 	earthAreaKm2 = 510072000.0 // rough area of the earth in KM².

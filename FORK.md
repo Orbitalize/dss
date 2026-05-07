@@ -31,3 +31,7 @@ Add surveillance support to db-manager evict.
 ### [surveillance] add surveillance infra
 
 Add infrastructure changes to support surveillance.
+
+### [geo] Increase maximum area allowed by the DSS
+
+Increase maximum area for entities from 2 500km² to 10 000km² as F3548-21 allows constraint with area up to 10 000km².
