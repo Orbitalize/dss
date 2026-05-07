@@ -19,3 +19,7 @@ This core-service works as remote-id and reuses some of its internals (store) to
 ### [surveillance] add surveillance datastore
 
 Add surveillance datastore.
+
+### [surveillance] add surveillance app
+
+Add surveillance application and server implementation.

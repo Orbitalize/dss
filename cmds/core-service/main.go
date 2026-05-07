@@ -33,6 +33,7 @@ import (
 	scds "github.com/interuss/dss/pkg/scd/store"
 	"github.com/interuss/dss/pkg/store"
 	surveillance "github.com/interuss/dss/pkg/surveillance/server"
+	surveillances "github.com/interuss/dss/pkg/surveillance/store"
 	"github.com/interuss/dss/pkg/version"
 	"github.com/interuss/dss/pkg/versioning"
 	"github.com/interuss/stacktrace"
@@ -131,7 +132,22 @@ func createRIDServers(ctx context.Context, locality string, logger *zap.Logger) 
 }
 
 func createSurveillanceServer(ctx context.Context, locality string, logger *zap.Logger) (*surveillance.Server, error) {
-	return &surveillance.Server{}, nil
+	survStore, err := surveillances.Init(ctx, logger, true)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = survStore.Interact(ctx)
+	if err != nil {
+		return nil, stacktrace.Propagate(err, "Unable to interact with store")
+	}
+
+	app := application.NewFromTransactor(survStore, logger)
+	return &surveillance.Server{
+		App:               app,
+		Locality:          locality,
+		AllowHTTPBaseUrls: *allowHTTPBaseUrls,
+	}, nil
 }
 
 func createSCDServer(ctx context.Context, logger *zap.Logger) (*scd.Server, error) {
@@ -192,7 +208,6 @@ func RunHTTPServer(ctx context.Context, ctxCanceler func(), address, locality st
 		return stacktrace.Propagate(err, "Failed to create remote ID server")
 	}
 
-	// Initialize surveillance
 	surveillanceServer, err = createSurveillanceServer(ctx, locality, logger)
 	if err != nil {
 		return stacktrace.Propagate(err, "Failed to create surveillance server")
