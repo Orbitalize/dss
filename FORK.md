@@ -27,3 +27,7 @@ Add surveillance datastore.
 ### [surveillance] add surveillance app
 
 Add surveillance application and server implementation.
+
+### [surveillance] add db-manager evict
+
+Add surveillance support to db-manager evict.

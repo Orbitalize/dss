@@ -18,6 +18,8 @@ class QueryHelper:
             "utm.strategic_coordination",
             "rid.display_provider",
             "rid.service_provider",
+            "surveillance.display_provider",
+            "surveillance.service_provider",
         ]
 
         r = request.urlopen(
@@ -248,6 +250,106 @@ class QueryHelper:
         try:
             r = self.do_dss_get_query(
                 f"http://localhost:8082/rid/v2/dss/identification_service_areas/{id}"
+            )
+        except error.HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
+
+        if r.status != 200:
+            return None
+
+        return json.loads(r.read())
+
+    def create_surveillance_subscription(self, until: datetime) -> dict[str, Any] | None:
+        r = self.do_dss_put_query(
+            f"http://localhost:8082/surveillance/v0/dss/subscriptions/{uuid.uuid4()}",
+            {
+                "uss_base_url": "https://testdummy.interuss.org/interuss/dss/test/evict/query_helper/surveillance_sub",
+                "extents": {
+                    "volume": {
+                        "altitude_upper": {
+                            "units": "M",
+                            "reference": "W84",
+                            "value": 300,
+                        },
+                        "altitude_lower": {
+                            "units": "M",
+                            "reference": "W84",
+                            "value": 0,
+                        },
+                        "outline_circle": {
+                            "radius": {"units": "M", "value": 100},
+                            "center": {
+                                "lat": random.uniform(-90, 90),
+                                "lng": random.uniform(-180, 180),
+                            },  # We use a random location to avoid too many subscription in the same location
+                        },
+                    },
+                    "time_end": {"value": until.isoformat(), "format": "RFC3339"},
+                },
+            },
+        )
+
+        if r.status != 200:
+            return None
+
+        return json.loads(r.read())
+
+    def get_surveillance_subscription(self, id: str) -> dict[str, Any] | None:
+        try:
+            r = self.do_dss_get_query(
+                f"http://localhost:8082/surveillance/v0/dss/subscriptions/{id}"
+            )
+        except error.HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
+
+        if r.status != 200:
+            return None
+
+        return json.loads(r.read())
+
+    def create_surveillance_TSA(self, until: datetime) -> dict[str, Any] | None:
+        r = self.do_dss_put_query(
+            f"http://localhost:8082/surveillance/v0/dss/traffic_surveilled_areas/{uuid.uuid4()}",
+            {
+                "uss_base_url": "https://testdummy.interuss.org/interuss/dss/test/evict/query_helper/tsa",
+                "extents": {
+                    "volume": {
+                        "altitude_upper": {
+                            "units": "M",
+                            "reference": "W84",
+                            "value": 300,
+                        },
+                        "altitude_lower": {
+                            "units": "M",
+                            "reference": "W84",
+                            "value": 0,
+                        },
+                        "outline_circle": {
+                            "radius": {"units": "M", "value": 100},
+                            "center": {
+                                "lat": random.uniform(-90, 90),
+                                "lng": random.uniform(-180, 180),
+                            },  # We use a random location to avoid too many subscription in the same location
+                        },
+                    },
+                    "time_end": {"value": until.isoformat(), "format": "RFC3339"},
+                },
+            },
+        )
+
+        if r.status != 200:
+            return None
+
+        return json.loads(r.read())
+
+    def get_surveillance_TSA(self, id: str) -> dict[str, Any] | None:
+        try:
+            r = self.do_dss_get_query(
+                f"http://localhost:8082/surveillance/v0/dss/traffic_surveilled_areas/{id}"
             )
         except error.HTTPError as e:
             if e.code == 404:

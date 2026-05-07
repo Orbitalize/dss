@@ -34,15 +34,18 @@ Usage:
   db-manager evict [flags]
 
 Flags:
-      --delete             set this flag to true to delete the expired entities
-  -h, --help               help for evict
-      --locality string    self-identification string of this DSS instance
-      --rid_isa            set this flag to true to check for expired RID ISAs (default true)
-      --rid_sub            set this flag to true to check for expired RID subscriptions (default true)
-      --rid_ttl duration   time-to-live duration used for determining RID entries expiration, defaults to 30 minutes (default 30m0s)
-      --scd_oir            set this flag to true to check for expired SCD operational intents (default true)
-      --scd_sub            set this flag to true to check for expired SCD subscriptions (default true)
-      --scd_ttl duration   time-to-live duration used for determining SCD entries expiration, defaults to 2*56 days (default 2688h0m0s)
+      --delete                      set this flag to true to delete the expired entities
+  -h, --help                        help for evict
+      --locality string             self-identification string of this DSS instance
+      --rid_isa                     set this flag to true to check for expired RID ISAs (default true)
+      --rid_sub                     set this flag to true to check for expired RID subscriptions (default true)
+      --rid_ttl duration            time-to-live duration used for determining RID entries expiration, defaults to 30 minutes (default 30m0s)
+      --surveillance_tsa            set this flag to true to check for expired Surveillance TSAs (default true)
+      --surveillance_sub            set this flag to true to check for expired Surveillance subscriptions (default true)
+      --surveillance_ttl duration   time-to-live duration used for determining Surveillance entries expiration, defaults to 30 minutes (default 30m0s)
+      --scd_oir                     set this flag to true to check for expired SCD operational intents (default true)
+      --scd_sub                     set this flag to true to check for expired SCD subscriptions (default true)
+      --scd_ttl duration            time-to-live duration used for determining SCD entries expiration, defaults to 2*56 days (default 2688h0m0s)
 
 Global Flags:
       --datastore_application_name string   application name for tagging the connection to the database (default "dss")

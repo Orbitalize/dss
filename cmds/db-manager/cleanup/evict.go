@@ -14,6 +14,9 @@ import (
 	scdmodels "github.com/interuss/dss/pkg/scd/models"
 	scdrepos "github.com/interuss/dss/pkg/scd/repos"
 	scds "github.com/interuss/dss/pkg/scd/store"
+	survmodels "github.com/interuss/dss/pkg/surveillance/models"
+	survrepos "github.com/interuss/dss/pkg/surveillance/repos"
+	survs "github.com/interuss/dss/pkg/surveillance/store"
 	"github.com/interuss/stacktrace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -32,6 +35,9 @@ var (
 	checkRidSubs  = flags.Bool("rid_sub", true, "set this flag to true to check for expired RID subscriptions")
 	scdTtl        = flags.Duration("scd_ttl", time.Hour*24*112, "time-to-live duration used for determining SCD entries expiration, defaults to 2*56 days")
 	ridTtl        = flags.Duration("rid_ttl", time.Minute*30, "time-to-live duration used for determining RID entries expiration, defaults to 30 minutes")
+	checkSurvTSAs = flags.Bool("surveillance_tsa", true, "set this flag to true to check for expired surveillance TSAs")
+	checkSurvSubs = flags.Bool("surveillance_sub", true, "set this flag to true to check for expired surveillance subscriptions")
+	survTtl       = flags.Duration("surveillance_ttl", time.Minute*30, "time-to-live duration used for determining surveillance entries expiration, defaults to 30 minutes")
 	deleteExpired = flags.Bool("delete", false, "set this flag to true to delete the expired entities")
 	locality      = flags.String("locality", "", "self-identification string of this DSS instance")
 	timeout       = flags.Duration("timeout", 5*time.Minute, "Timeout for the command")
@@ -43,9 +49,10 @@ func init() {
 
 func evict(cmd *cobra.Command, _ []string) error {
 	var (
-		ctx          = cmd.Context()
-		scdThreshold = time.Now().Add(-*scdTtl)
-		ridThreshold = time.Now().Add(-*ridTtl)
+		ctx           = cmd.Context()
+		scdThreshold  = time.Now().Add(-*scdTtl)
+		ridThreshold  = time.Now().Add(-*ridTtl)
+		survThreshold = time.Now().Add(-*survTtl)
 	)
 	log.Printf("WARNING: The usage of this tool may have an impact on performance when deleting entities. Read more in the README.")
 
@@ -64,11 +71,18 @@ func evict(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	survStore, err := survs.Init(ctx, logger, false)
+	if err != nil {
+		return err
+	}
+
 	var (
 		expiredOpIntents []*scdmodels.OperationalIntent
 		scdExpiredSub    []*scdmodels.Subscription
 		expiredISAs      []*ridmodels.IdentificationServiceArea
 		ridExpiredSub    []*ridmodels.Subscription
+		expiredTSAs      []*survmodels.TrafficSurveilledArea
+		survExpiredSub   []*survmodels.Subscription
 	)
 	scdAction := func(ctx context.Context, r scdrepos.Repository) (err error) {
 		if *checkScdOirs {
@@ -149,6 +163,49 @@ func evict(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("failed to execute RID transaction: %w", err)
 	}
 
+	survAction := func(ctx context.Context, r survrepos.Repository) (err error) {
+		if *checkSurvTSAs {
+
+			expiredTSAs, err = r.ListExpiredISAs(ctx, *locality, survThreshold)
+			if err != nil {
+				return stacktrace.Propagate(err, "Failed to list expired TSAs")
+			}
+
+			if *deleteExpired {
+				for _, tsa := range expiredTSAs {
+					_, err := r.DeleteISA(ctx, tsa)
+					if err != nil {
+						return stacktrace.Propagate(err, "Failed to delete TSAs")
+					}
+				}
+			}
+
+		}
+
+		if *checkSurvSubs {
+			survExpiredSub, err = r.ListExpiredSubscriptions(ctx, *locality, survThreshold)
+			if err != nil {
+				return stacktrace.Propagate(err,
+					"Failed to list RID expired Subscriptions")
+			}
+
+			if *deleteExpired {
+				for _, sub := range survExpiredSub {
+					_, err := r.DeleteSubscription(ctx, sub)
+					if err != nil {
+						return stacktrace.Propagate(err, "Failed to delete Surveillance Subscription")
+					}
+				}
+			}
+
+		}
+
+		return nil
+	}
+	if err = survStore.Transact(ctx, survAction); err != nil {
+		return fmt.Errorf("failed to execute Surveillance transaction: %w", err)
+	}
+
 	for _, opIntent := range expiredOpIntents {
 		logExpiredEntity("operational intent", opIntent.ID, scdThreshold, *deleteExpired, opIntent.EndTime != nil)
 	}
@@ -161,8 +218,14 @@ func evict(cmd *cobra.Command, _ []string) error {
 	for _, sub := range ridExpiredSub {
 		logExpiredEntity("RID subscription", sub.ID, ridThreshold, *deleteExpired, sub.EndTime != nil)
 	}
-	if len(expiredOpIntents) == 0 && len(scdExpiredSub) == 0 && len(expiredISAs) == 0 && len(ridExpiredSub) == 0 {
-		log.Printf("no SCD entity older than %s and no RID entity older than %s found", scdThreshold.String(), ridThreshold.String())
+	if len(expiredOpIntents) == 0 && len(scdExpiredSub) == 0 &&
+		len(expiredISAs) == 0 && len(ridExpiredSub) == 0 &&
+		len(expiredTSAs) == 0 && len(survExpiredSub) == 0 {
+		log.Printf("no SCD entity older than %s, no RID entity older than %s and no surveillance entity older than %s found",
+			scdThreshold.String(),
+			ridThreshold.String(),
+			survThreshold.String(),
+		)
 	} else if !*deleteExpired {
 		log.Printf("no entity was deleted, run the command again with the `--delete` flag to do so")
 	}

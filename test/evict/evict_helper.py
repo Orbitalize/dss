@@ -14,8 +14,11 @@ class EvictHelper:
         scd_sub: bool = False,
         rid_isa: bool = False,
         rid_sub: bool = False,
+        surveillance_tsa: bool = False,
+        surveillance_sub: bool = False,
         scd_ttl: str | None = None,
         rid_ttl: str | None = None,
+        surveillance_ttl: str | None = None,
         locality: str = "local_dev",
         delete: bool = False,
     ):
@@ -33,6 +36,8 @@ class EvictHelper:
             f"--scd_sub={str(scd_sub).lower()}",
             f"--rid_isa={str(rid_isa).lower()}",
             f"--rid_sub={str(rid_sub).lower()}",
+            f"--surveillance_tsa={str(surveillance_tsa).lower()}",
+            f"--surveillance_sub={str(surveillance_sub).lower()}",
             "--locality",
             locality,
             "--datastore_host",
@@ -56,6 +61,12 @@ class EvictHelper:
             command += [
                 "--rid_ttl",
                 str(rid_ttl).lower(),
+            ]
+        
+        if surveillance_ttl:
+            command += [
+                "--surveillance_ttl",
+                str(surveillance_ttl).lower(),
             ]
 
         process = subprocess.run(
@@ -81,3 +92,11 @@ class EvictHelper:
         self, ttl: str, delete: bool, locality: str = "local_dev"
     ):
         self.run_evict(rid_sub=True, delete=delete, rid_ttl=ttl, locality=locality)
+
+    def evict_surveillance_TSAs(self, ttl: str, delete: bool, locality: str = "local_dev"):
+        self.run_evict(surveillance_tsa=True, delete=delete, surveillance_ttl=ttl, locality=locality)
+
+    def evict_surveillance_subscriptions(
+        self, ttl: str, delete: bool, locality: str = "local_dev"
+    ):
+        self.run_evict(surveillance_sub=True, delete=delete, surveillance_ttl=ttl, locality=locality)
