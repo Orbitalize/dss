@@ -23,9 +23,11 @@ spec:
             - args:
                 - --scd_oir={{ $.Values.dss.conf.evict.scd.operationalIntents }}
                 - --scd_sub={{ $.Values.dss.conf.evict.scd.subscriptions }}
+                - --scd_ttl={{ $.Values.dss.conf.evict.scd.ttl }}
                 - --rid_isa=false
                 - --rid_sub=false
-                - --scd_ttl={{ $.Values.dss.conf.evict.scd.ttl }}
+                - --surveillance_tsa=false
+                - --surveillance_sub=false
                 - --datastore_host={{ $datastoreHost }}
                 - --datastore_port={{ $datastorePort }}
                 - --datastore_user={{ $datastoreUser }}
@@ -77,6 +79,8 @@ spec:
                 - --rid_isa={{ $.Values.dss.conf.evict.rid.ISAs }}
                 - --rid_sub={{ $.Values.dss.conf.evict.rid.subscriptions }}
                 - --rid_ttl={{ $.Values.dss.conf.evict.rid.ttl }}
+                - --surveillance_tsa=false
+                - --surveillance_sub=false
                 - --datastore_host={{ $datastoreHost }}
                 - --datastore_port={{ $datastorePort }}
                 - --datastore_user={{ $datastoreUser }}
@@ -93,6 +97,59 @@ spec:
               image: {{$image}}
               imagePullPolicy: IfNotPresent
               name: dss-rid-evict
+              stdin: false
+              tty: false
+              volumeMounts:
+                {{- include "ca-certs:volumeMount" (dict "cockroachdbEnabled" $.Values.cockroachdb.enabled ) | nindent 16 }}
+                {{- include "client-certs:volumeMount" (dict "cockroachdbEnabled" $.Values.cockroachdb.enabled ) | nindent 16 }}
+          imagePullSecrets: []
+          terminationGracePeriodSeconds: 30
+          restartPolicy: Never
+          volumes:
+            {{- include "ca-certs:volume" (dict "cockroachdbEnabled" $.Values.cockroachdb.enabled ) | nindent 12 }}
+            {{- include "client-certs:volume" (dict "cockroachdbEnabled" $.Values.cockroachdb.enabled ) | nindent 12 }}
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    name: dss-surveillance-evict
+  name: dss-surveillance-evict
+  namespace: default
+spec:
+  schedule: "{{ $.Values.dss.conf.evict.surveillance.schedule }}"
+  suspend: {{ not $.Values.dss.conf.evict.surveillance.enableCron }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - args:
+                - --scd_oir=false
+                - --scd_sub=false
+                - --rid_tsa=false
+                - --rid_sub=false
+                - --surveillance_tsa={{ $.Values.dss.conf.evict.surveillance.TSAs }}
+                - --surveillance_sub={{ $.Values.dss.conf.evict.surveillance.subscriptions }}
+                - --surveillance_ttl={{ $.Values.dss.conf.evict.surveillance.ttl }}
+                - --datastore_host={{ $datastoreHost }}
+                - --datastore_port={{ $datastorePort }}
+                - --datastore_user={{ $datastoreUser }}
+  {{- if $.Values.cockroachdb.enabled }}
+                - --datastore_ssl_dir=/cockroach/cockroach-certs
+                - --datastore_ssl_mode=verify-full
+  {{- else }}
+                - --datastore_ssl_dir=/opt/yugabyte-certs/
+                - --datastore_ssl_mode=verify-full
+  {{- end }}
+              command:
+                - db-manager
+                - evict
+              image: {{$image}}
+              imagePullPolicy: IfNotPresent
+              name: dss-surveillance-evict
               stdin: false
               tty: false
               volumeMounts:

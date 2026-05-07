@@ -85,6 +85,13 @@ resource "local_file" "helm_chart_values" {
             ISAs : var.evict_rid_isas
             subscriptions : var.evict_rid_subscriptions
           }
+          surveillance = {
+            enableCron = var.evict_enable_surveillance_cron
+            schedule   = var.evict_surveillance_schedule
+            ttl : var.evict_surveillance_ttl
+            TSAs : var.evict_surveillance_tsas
+            subscriptions : var.evict_surveillance_subscriptions
+          }
         }
       }
     }
@@ -292,6 +299,13 @@ resource "local_file" "helm_chart_values" {
             ttl : var.evict_rid_ttl
             ISAs : var.evict_rid_isas
             subscriptions : var.evict_rid_subscriptions
+          }
+          surveillance = {
+            enableCron = var.evict_enable_surveillance_cron
+            schedule   = var.evict_surveillance_schedule
+            ttl : var.evict_surveillance_ttl
+            TSAs : var.evict_surveillance_tsas
+            subscriptions : var.evict_surveillance_subscriptions
           }
         }
       }

@@ -27,3 +27,7 @@ Add surveillance application and server implementation.
 ### [surveillance] add db-manager evict
 
 Add surveillance support to db-manager evict.
+
+### [surveillance] add surveillance infra
+
+Add infrastructure changes to support surveillance.
