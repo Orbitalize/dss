@@ -19,3 +19,7 @@ Relax time bound validation on constraints so start/end times are not required
 Add surveillance core-service as defined in [cis-interfaces](https://github.com/skyguide-ansp/cis-interfaces).
 
 This core-service works as remote-id and reuses some of its internals (store) to discover air traffic surveillance providers instead of UAS telemetry.
+
+### [surveillance] add surveillance datastore
+
+Add surveillance datastore.

@@ -156,6 +156,7 @@ test-go-units-crdb: cleanup-test-go-units-crdb
 	@docker run -d --name dss-crdb-for-testing -p 26257:26257 -p 8080:8080  cockroachdb/cockroach:v24.1.3 start-single-node --insecure > /dev/null
 	@until [ -n "`docker logs dss-crdb-for-testing | grep 'nodeID'`" ]; do echo "Waiting for CRDB to be ready"; sleep 3; done;
 	go run ./cmds/db-manager/main.go migrate --schemas_dir ./build/db_schemas/rid --db_version latest --datastore_host localhost
+	go run ./cmds/db-manager/main.go migrate --schemas_dir ./build/db_schemas/surveillance --db_version latest --datastore_host localhost
 	go run ./cmds/db-manager/main.go migrate --schemas_dir ./build/db_schemas/scd --db_version latest --datastore_host localhost
 	go run ./cmds/db-manager/main.go migrate --schemas_dir ./build/db_schemas/aux_ --db_version latest --datastore_host localhost
 	go test -cover -count=1 -v ./pkg/rid/store/sqlstore --datastore_host localhost --datastore_port 26257 --datastore_ssl_mode disable --datastore_user root -test.gocoverdir=$(COVERDATA_DIR)

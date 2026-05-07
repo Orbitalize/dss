@@ -55,6 +55,10 @@ go run ./cmds/db-manager migrate \
   --db_version latest \
   --datastore_host localhost
 go run ./cmds/db-manager migrate \
+  --schemas_dir ./build/db_schemas/surveillance \
+  --db_version latest \
+  --datastore_host localhost
+go run ./cmds/db-manager migrate \
   --schemas_dir ./build/db_schemas/scd \
   --db_version latest \
   --datastore_host localhost
@@ -69,6 +73,12 @@ For Yugabyte:
 ```bash
 go run ./cmds/db-manager migrate \
   --schemas_dir ./build/db_schemas/yugabyte/rid \
+  --db_version latest \
+  --datastore_port 5433 \
+  --datastore_user yugabyte \
+  --datastore_host localhost
+go run ./cmds/db-manager migrate \
+  --schemas_dir ./build/db_schemas/yugabyte/surveillance \
   --db_version latest \
   --datastore_port 5433 \
   --datastore_user yugabyte \
