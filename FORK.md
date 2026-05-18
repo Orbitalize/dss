@@ -35,3 +35,7 @@ Add surveillance support to db-manager evict.
 ### [surveillance] add surveillance infra
 
 Add infrastructure changes to support surveillance.
+
+### [surveillance] disable evict by default
+
+Disable db-manager evict by default to avoid interference with default evict configuration. Increase default TTL.
