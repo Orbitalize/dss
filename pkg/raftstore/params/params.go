@@ -53,6 +53,10 @@ func (c ConnectParameters) PeerMap() (map[uint64]*url.URL, error) {
 			return nil, stacktrace.Propagate(err, "invalid peer URL %s", parts[1])
 		}
 
+		if peerURL.Scheme != "https" {
+			return nil, stacktrace.NewError("invalid peer URL %s: must use https scheme", parts[1])
+		}
+
 		peers[id] = peerURL
 	}
 
@@ -109,7 +113,7 @@ var (
 
 func init() {
 	flag.Uint64Var(&connectParameters.ID, "raft_node_id", 0, "raft node ID for this instance (must be non-zero and unique within the cluster)")
-	flag.StringVar(&connectParameters.Peers, "raft_peers", "", `comma-separated "nodeID=peerURL" pairs for all cluster members, including the current node, e.g. "1=http://node1:9021,2=http://node2:9021,3=http://node3:9021"`)
+	flag.StringVar(&connectParameters.Peers, "raft_peers", "", `comma-separated "nodeID=peerURL" pairs for all cluster members, including the current node, e.g. "1=https://node1:9021,2=https://node2:9021,3=https://node3:9021"`)
 	flag.StringVar(&connectParameters.TLS, "raft_tls", "", `TLS certificates, format: ca=/path/to/ca.crt,cert=/path/to/node.crt,key=/path/to/node.key"`)
 }
 
