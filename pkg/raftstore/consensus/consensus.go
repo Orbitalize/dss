@@ -58,7 +58,7 @@ func (c *Consensus) initTransport(logger *zap.Logger, nodeID uint64, clusterID u
 	}
 
 	cfg, err := tlsInfo.ServerConfig()
-	if cfg == nil {
+	if err != nil {
 		return stacktrace.NewError("failed to create TLS config")
 	}
 
