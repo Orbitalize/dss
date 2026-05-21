@@ -16,12 +16,12 @@ for NODE_ID in 1 2 3; do
     echo "Starting node $NODE_ID on port $ADDR..."
     TLS_ARGS="--raft_tls=ca=$ROOT_DIR/build/test-certs/raft-certs/ca.crt,cert=$ROOT_DIR/build/test-certs/raft-certs/node${NODE_ID}.crt,key=$ROOT_DIR/build/test-certs/raft-certs/node${NODE_ID}.key"
 
-    go run $ROOT_DIR/cmds/core-service \
+    go run "$ROOT_DIR"/cmds/core-service \
         --store_type=raft \
         --raft_node_id=$NODE_ID \
         --addr=$ADDR \
         --raft_peers=$PEERS \
-        $TLS_ARGS \
+        "$TLS_ARGS" \
         --accepted_jwt_audiences=dss \
-        --public_key_files=$ROOT_DIR/build/test-certs/auth2.pem > "$OUT" 2>&1 &
+        --public_key_files="$ROOT_DIR"/build/test-certs/auth2.pem > "$OUT" 2>&1 &
 done

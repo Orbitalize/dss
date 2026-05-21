@@ -17,7 +17,7 @@ show_help() {
 # Cleanup function
 clean_certs() {
     echo "Cleaning up all certificates and keys..."
-    rm -f *.key *.crt *.csr *.srl
+    rm -f ./*.key ./*.crt ./*.csr ./*.srl
     echo "Done."
     exit 0
 }
@@ -56,5 +56,5 @@ do
 done
 
 # 3. Final Cleanup of temporary request files
-rm -f *.csr
+rm -f ./*.csr
 echo "Success! Generated $NODE_COUNT node certificates."
