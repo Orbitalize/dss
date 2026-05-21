@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/interuss/stacktrace"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	v2stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
@@ -43,10 +44,21 @@ func NewConsensus(logger *zap.Logger, nodeID uint64, peers map[uint64]*url.URL) 
 }
 
 func (c *Consensus) initTransport(logger *zap.Logger, nodeID uint64, clusterID uint64, peers map[uint64]*url.URL) error {
+	tlsInfo := transport.TLSInfo{
+		TrustedCAFile: "build/test-certs/raft-certs/ca.crt",
+		CertFile:      fmt.Sprintf("build/test-certs/raft-certs/node%d.crt", nodeID),
+		KeyFile:       fmt.Sprintf("build/test-certs/raft-certs/node%d.key", nodeID),
+	}
+	cfg, err := tlsInfo.ServerConfig()
+	if cfg == nil {
+		return stacktrace.NewError("failed to create TLS config")
+	}
+
 	nodeIDStr := fmt.Sprintf("%d", nodeID)
 
 	transport := &rafthttp.Transport{
 		Logger:      logger,
+		TLSInfo:     tlsInfo,
 		ID:          types.ID(nodeID),
 		ClusterID:   types.ID(clusterID),
 		Raft:        c,
@@ -55,7 +67,7 @@ func (c *Consensus) initTransport(logger *zap.Logger, nodeID uint64, clusterID u
 		ErrorC:      c.errorC,
 	}
 
-	err := transport.Start()
+	err = transport.Start()
 	if err != nil {
 		return stacktrace.Propagate(err, "failed to start transport")
 	}
@@ -75,12 +87,13 @@ func (c *Consensus) initTransport(logger *zap.Logger, nodeID uint64, clusterID u
 	}
 
 	c.server = &http.Server{
-		Addr:    listeningAddr,
-		Handler: transport.Handler(),
+		Addr:      listeningAddr,
+		Handler:   transport.Handler(),
+		TLSConfig: cfg,
 	}
 
 	go func() {
-		err := c.server.ListenAndServe()
+		err := c.server.ListenAndServeTLS(tlsInfo.CertFile, tlsInfo.KeyFile)
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("http server error", zap.Error(err))
 			c.errorC <- err
