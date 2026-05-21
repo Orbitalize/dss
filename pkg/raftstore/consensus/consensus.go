@@ -7,11 +7,13 @@ import (
 	"net/http"
 	"net/url"
 
+	raftparams "github.com/interuss/dss/pkg/raftstore/params"
 	"github.com/interuss/stacktrace"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	v2stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
+
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 	"go.uber.org/zap"
@@ -44,11 +46,17 @@ func NewConsensus(logger *zap.Logger, nodeID uint64, peers map[uint64]*url.URL) 
 }
 
 func (c *Consensus) initTransport(logger *zap.Logger, nodeID uint64, clusterID uint64, peers map[uint64]*url.URL) error {
-	tlsInfo := transport.TLSInfo{
-		TrustedCAFile: "build/test-certs/raft-certs/ca.crt",
-		CertFile:      fmt.Sprintf("build/test-certs/raft-certs/node%d.crt", nodeID),
-		KeyFile:       fmt.Sprintf("build/test-certs/raft-certs/node%d.key", nodeID),
+	tlsCerts, err := raftparams.GetConnectParameters().TLSCertificates()
+	if err != nil {
+		return stacktrace.Propagate(err, "failed to parse TLS certificates")
 	}
+
+	tlsInfo := transport.TLSInfo{
+		TrustedCAFile: tlsCerts.CAFile,
+		CertFile:      tlsCerts.CertFile,
+		KeyFile:       tlsCerts.KeyFile,
+	}
+
 	cfg, err := tlsInfo.ServerConfig()
 	if cfg == nil {
 		return stacktrace.NewError("failed to create TLS config")

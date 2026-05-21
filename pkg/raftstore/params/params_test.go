@@ -93,3 +93,50 @@ func mustParseURL(s string) *url.URL {
 
 	return u
 }
+
+func TestTLSCertificates(t *testing.T) {
+	tests := []struct {
+		name      string
+		tls       string
+		want      TLSCertificates
+		wantError bool
+	}{
+		{
+			name: "valid TLS parameters",
+			tls:  "ca=ca.crt,cert=server.crt,key=server.key",
+			want: TLSCertificates{
+				CAFile:   "ca.crt",
+				CertFile: "server.crt",
+				KeyFile:  "server.key",
+			},
+		},
+		{
+			name:      "missing TLS parameters",
+			tls:       "",
+			wantError: true,
+		},
+		{
+			name:      "invalid TLS parameter format",
+			tls:       "invalidparam",
+			wantError: true,
+		},
+		{
+			name:      "invalid TLS parameter key",
+			tls:       "unknown=somevalue",
+			wantError: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c := ConnectParameters{TLS: tc.tls}
+			got, err := c.TLSCertificates()
+			if tc.wantError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
