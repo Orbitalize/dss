@@ -36,7 +36,8 @@ type Consensus struct {
 	storage   *storage
 	commitChs map[string]chan EntryCommit
 
-	tracker *proposalsTracker
+	tracker  *proposalsTracker
+	stopOnce sync.Once
 
 	confState     raftpb.ConfState
 	snapshotIndex uint64
@@ -95,21 +96,28 @@ func NewConsensus(ctx context.Context, logger *zap.Logger, peers map[uint64]*url
 			consensus.logger.Error("handleReady exited with error, shutting down consensus", zap.Error(err))
 		}
 
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
-		defer cancel()
-		if shutdownErr := consensus.server.Shutdown(shutdownCtx); shutdownErr != nil {
-			consensus.logger.Error("failed to shutdown http server", zap.Error(shutdownErr))
-		} else {
-			consensus.logger.Info("http server shutdown complete")
-		}
-
-		consensus.transport.Stop()
-		consensus.logger.Info("transport stopped")
-		consensus.node.Stop()
-		consensus.logger.Info("raft node stopped")
+		consensus.Stop(ctx)
 	}()
 
 	return consensus, nil
+}
+
+func (c *Consensus) Stop(ctx context.Context) {
+	c.stopOnce.Do(func() {
+		c.logger.Info("stopping consensus")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
+		defer cancel()
+		if shutdownErr := c.server.Shutdown(shutdownCtx); shutdownErr != nil {
+			c.logger.Error("failed to shutdown http server", zap.Error(shutdownErr))
+		} else {
+			c.logger.Info("http server shutdown complete")
+		}
+
+		c.transport.Stop()
+		c.logger.Info("transport stopped")
+		c.node.Stop()
+		c.logger.Info("raft node stopped")
+	})
 }
 
 // ProposeValue blocks until the proposal is committed and applied / dropped or until ctx is cancelled.
