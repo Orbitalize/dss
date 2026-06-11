@@ -40,7 +40,7 @@ type OperationalIntent interface {
 
 // Subscription abstracts subscription-specific interactions with the backing repository.
 type Subscription interface {
-	// SearchSubscriptions returns all Subscriptions in "v4d".
+	// SearchSubscriptions returns all active Subscriptions in "v4d".
 	SearchSubscriptions(ctx context.Context, v4d *dssmodels.Volume4D) ([]*scdmodels.Subscription, error)
 
 	// GetSubscription returns the Subscription referenced by id, or nil and no
