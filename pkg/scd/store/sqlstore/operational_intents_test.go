@@ -21,6 +21,11 @@ var (
 		s2.CellID(int64(8768904178417270784)),
 	}
 
+	footprint = &models.GeoCircle{
+		Center:      models.LatLngPoint{Lat: 5.68, Lng: -147.09},
+		RadiusMeter: 100,
+	}
+
 	start1 = time.Date(2024, time.August, 14, 15, 48, 36, 0, time.UTC)
 	end1   = start1.Add(time.Hour)
 	start2 = time.Date(2024, time.September, 15, 15, 48, 36, 0, time.UTC)

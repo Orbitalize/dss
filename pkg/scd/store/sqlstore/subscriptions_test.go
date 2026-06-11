@@ -115,3 +115,53 @@ func TestListExpiredSubscriptions(t *testing.T) {
 		})
 	}
 }
+
+func TestSearchSubscriptions(t *testing.T) {
+	var (
+		ctx                  = context.Background()
+		store, tearDownStore = setUpStore(ctx, t)
+	)
+	require.NotNil(t, store)
+	defer tearDownStore()
+
+	r, err := store.Interact(ctx)
+	require.NoError(t, err)
+
+	now := time.Now()
+
+	active := &scdmodels.Subscription{
+		ID:                          sub1ID,
+		NotificationIndex:           1,
+		Manager:                     "unittest",
+		StartTime:                   new(now.Add(-time.Hour)),
+		EndTime:                     new(now.Add(time.Hour)),
+		USSBaseURL:                  "https://dummy.uss",
+		NotifyForOperationalIntents: true,
+		NotifyForConstraints:        false,
+		ImplicitSubscription:        true,
+		Cells:                       cells,
+	}
+	expired := &scdmodels.Subscription{
+		ID:                          sub2ID,
+		NotificationIndex:           1,
+		Manager:                     "unittest",
+		StartTime:                   new(now.Add(-2 * time.Hour)),
+		EndTime:                     new(now.Add(-time.Hour)),
+		USSBaseURL:                  "https://dummy.uss",
+		NotifyForOperationalIntents: true,
+		NotifyForConstraints:        false,
+		ImplicitSubscription:        true,
+		Cells:                       cells,
+	}
+
+	_, err = r.UpsertSubscription(ctx, active)
+	require.NoError(t, err)
+
+	_, err = r.UpsertSubscription(ctx, expired)
+	require.NoError(t, err)
+
+	subs, err := r.SearchSubscriptions(ctx, &models.Volume4D{SpatialVolume: &models.Volume3D{Footprint: footprint}})
+	require.NoError(t, err)
+	require.Len(t, subs, 1)
+	require.Equal(t, subs[0].ID, active.ID)
+}
