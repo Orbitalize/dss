@@ -141,3 +141,7 @@ func init() {
 func GetConnectParameters() ConnectParameters {
 	return connectParameters
 }
+
+func GetClusterID() uint64 {
+	return connectParameters.ClusterID
+}
