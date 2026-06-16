@@ -24,11 +24,11 @@ func (r *repo) GetRepo() repos.Repository { return r }
 func (r *repo) IsReadOnly(_ raftstore.RequestType) bool { return false }
 
 func (r *repo) GetSnapshot() ([]byte, error) {
-	return nil, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "not implemented yet")
+	return nil, nil // TODO - implement
 }
 
 func (r *repo) RestoreFromSnapshot([]byte) error {
-	return stacktrace.NewErrorWithCode(dsserr.NotImplemented, "not implemented yet")
+	return nil // TODO - implement
 }
 
 func (r *repo) Apply(_ context.Context, _ consensus.Proposal) (any, error) {
