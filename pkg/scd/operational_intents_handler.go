@@ -362,51 +362,6 @@ func (a *Server) UpdateOperationalIntentReference(ctx context.Context, req *rest
 	return restapi.UpdateOperationalIntentReferenceResponseSet{Response200: respOK}
 }
 
-type validOIRParams struct {
-	id                   dssmodels.ID
-	ovn                  scdmodels.OVN
-	newOVN               scdmodels.OVN
-	state                scdmodels.OperationalIntentState
-	uExtent              *dssmodels.Volume4D
-	cells                s2.CellUnion
-	subscriptionID       dssmodels.ID
-	ussBaseURL           string
-	implicitSubscription struct {
-		requested      bool
-		baseURL        string
-		forConstraints bool
-	}
-	key map[scdmodels.OVN]bool
-}
-
-func (vp *validOIRParams) toOIR(manager dssmodels.Manager, attachedSub *scdmodels.Subscription, version scdmodels.VersionNumber, pastOVNs []scdmodels.OVN) *scdmodels.OperationalIntent {
-	// For OIR's in the accepted state, we may not have a attachedSub available,
-	// in such cases the attachedSub ID on scdmodels.OperationalIntent will be nil
-	// and will be replaced with the 'NullV4UUID' when sent over to a client.
-	var subID *dssmodels.ID
-	if attachedSub != nil {
-		// Note: do _not_ use vp.subscriptionID here, as it may be empty
-		subID = &attachedSub.ID
-	}
-	return &scdmodels.OperationalIntent{
-		ID:       vp.id,
-		Manager:  manager,
-		Version:  version,
-		OVN:      vp.newOVN, // non-empty only if the USS has requested an OVN
-		PastOVNs: pastOVNs,
-
-		StartTime:     vp.uExtent.StartTime,
-		EndTime:       vp.uExtent.EndTime,
-		AltitudeLower: vp.uExtent.SpatialVolume.AltitudeLo,
-		AltitudeUpper: vp.uExtent.SpatialVolume.AltitudeHi,
-		Cells:         vp.cells,
-
-		USSBaseURL:     vp.ussBaseURL,
-		SubscriptionID: subID,
-		State:          vp.state,
-	}
-}
-
 // validateAndReturnOIRUpsertParams checks that the parameters for an Operational Intent Reference upsert are valid.
 // Note that this does NOT check for anything related to access controls: any error returned should be labeled
 // as a dsserr.BadRequest.
@@ -416,12 +371,12 @@ func validateAndReturnOIRUpsertParams(
 	ovn restapi.EntityOVN,
 	params *restapi.PutOperationalIntentReferenceParameters,
 	allowHTTPBaseUrls bool,
-) (*validOIRParams, error) {
+) (*repos.ValidOIRParams, error) {
 
-	valid := &validOIRParams{}
+	valid := &repos.ValidOIRParams{}
 	var err error
 
-	valid.id, err = dssmodels.IDFromString(string(entityid))
+	valid.ID, err = dssmodels.IDFromString(string(entityid))
 	if err != nil {
 		return nil, stacktrace.NewError("Invalid ID format: `%s`", entityid)
 	}
@@ -430,10 +385,10 @@ func validateAndReturnOIRUpsertParams(
 		return nil, stacktrace.NewError("Missing required UssBaseUrl")
 	}
 
-	valid.ussBaseURL = string(params.UssBaseUrl)
+	valid.USSBaseURL = string(params.UssBaseUrl)
 
 	if params.SubscriptionId != nil {
-		valid.subscriptionID, err = dssmodels.IDFromOptionalString(string(*params.SubscriptionId))
+		valid.SubscriptionID, err = dssmodels.IDFromOptionalString(string(*params.SubscriptionId))
 		if err != nil {
 			return nil, stacktrace.NewError("Invalid ID format for Subscription ID: `%s`", *params.SubscriptionId)
 		}
@@ -449,11 +404,12 @@ func validateAndReturnOIRUpsertParams(
 		if params.SubscriptionId != nil {
 			return nil, stacktrace.NewError("Cannot provide both a Subscription ID and request an implicit subscription")
 		}
-		valid.implicitSubscription.requested = true
-		valid.implicitSubscription.baseURL = string(params.NewSubscription.UssBaseUrl)
+		valid.ImplicitSubscription.Requested = true
+		valid.ImplicitSubscription.ID = dssmodels.ID(uuid.New().String())
+		valid.ImplicitSubscription.BaseURL = string(params.NewSubscription.UssBaseUrl)
 		// notify for constraints defaults to false if not specified
 		if params.NewSubscription.NotifyForConstraints != nil {
-			valid.implicitSubscription.forConstraints = *params.NewSubscription.NotifyForConstraints
+			valid.ImplicitSubscription.ForConstraints = *params.NewSubscription.NotifyForConstraints
 		}
 	}
 
@@ -464,21 +420,21 @@ func validateAndReturnOIRUpsertParams(
 		}
 
 		if params.NewSubscription != nil {
-			err := scdmodels.ValidateUSSBaseURL(valid.implicitSubscription.baseURL)
+			err := scdmodels.ValidateUSSBaseURL(valid.ImplicitSubscription.BaseURL)
 			if err != nil {
 				return nil, stacktrace.Propagate(err, "Failed to validate USS base URL for subscription (in parameters for implicit subscription)")
 			}
 		}
 	}
 
-	valid.state = scdmodels.OperationalIntentState(params.State)
-	if !valid.state.IsValidInDSS() {
+	valid.State = scdmodels.OperationalIntentState(params.State)
+	if !valid.State.IsValidInDSS() {
 		return nil, stacktrace.NewError("Invalid OperationalIntent state: %s", params.State)
 	}
 
 	// Start and end times, as well as lower and upper altitudes, are required for each volume
 	// The end time may not be in the past.
-	valid.uExtent, err = dssmodels.UnionVolumes4DFromSCDRest(
+	valid.UExtent, err = dssmodels.UnionVolumes4DFromSCDRest(
 		params.Extents,
 		dssmodels.WithRequireTimeBounds(),
 		dssmodels.WithRequireAltitudeBounds(),
@@ -487,7 +443,7 @@ func validateAndReturnOIRUpsertParams(
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Invalid extents")
 	}
-	valid.cells, err = valid.uExtent.CalculateSpatialCovering()
+	valid.Cells, err = valid.UExtent.CalculateSpatialCovering()
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Invalid area")
 	}
@@ -495,10 +451,10 @@ func validateAndReturnOIRUpsertParams(
 	if ovn == "" && params.State != restapi.OperationalIntentState_Accepted {
 		return nil, stacktrace.NewError("Invalid state for initial version: `%s`", params.State)
 	}
-	valid.ovn = scdmodels.OVN(ovn)
+	valid.OVN = scdmodels.OVN(ovn)
 
 	if params.RequestedOvnSuffix != nil {
-		valid.newOVN, err = scdmodels.NewOVNFromUUIDv7Suffix(now, valid.id, string(*params.RequestedOvnSuffix))
+		valid.NewOVN, err = scdmodels.NewOVNFromUUIDv7Suffix(now, valid.ID, string(*params.RequestedOvnSuffix))
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Invalid requested OVN suffix")
 		}
@@ -506,18 +462,18 @@ func validateAndReturnOIRUpsertParams(
 
 	// Check if a subscription is required for this request:
 	// OIRs in an accepted state do not need a subscription.
-	if valid.state.RequiresSubscription() &&
-		valid.subscriptionID.Empty() &&
+	if valid.State.RequiresSubscription() &&
+		valid.SubscriptionID.Empty() &&
 		(params.NewSubscription == nil ||
 			params.NewSubscription.UssBaseUrl == "") {
-		return nil, stacktrace.NewError("Provided Operational Intent Reference state `%s` requires either a subscription ID or information to create an implicit subscription", valid.state)
+		return nil, stacktrace.NewError("Provided Operational Intent Reference state `%s` requires either a subscription ID or information to create an implicit subscription", valid.State)
 	}
 
 	// Construct a hash set of OVNs as the key
-	valid.key = map[scdmodels.OVN]bool{}
+	valid.Key = map[scdmodels.OVN]bool{}
 	if params.Key != nil {
 		for _, ovn := range *params.Key {
-			valid.key[scdmodels.OVN(ovn)] = true
+			valid.Key[scdmodels.OVN(ovn)] = true
 		}
 	}
 
@@ -536,24 +492,6 @@ func checkUpsertPermissionsAndReturnManager(authorizedManager *api.Authorization
 	return dssmodels.Manager(*authorizedManager.ClientID), nil
 }
 
-// createAndStoreNewImplicitSubscription creates a new implicit subscription with the given pre-generated ID.
-func createAndStoreNewImplicitSubscription(ctx context.Context, r repos.Repository, manager dssmodels.Manager, newSubID dssmodels.ID, validParams *validOIRParams) (*scdmodels.Subscription, error) {
-	subToUpsert := scdmodels.Subscription{
-		ID:                          newSubID,
-		Manager:                     manager,
-		StartTime:                   validParams.uExtent.StartTime,
-		EndTime:                     validParams.uExtent.EndTime,
-		AltitudeLo:                  validParams.uExtent.SpatialVolume.AltitudeLo,
-		AltitudeHi:                  validParams.uExtent.SpatialVolume.AltitudeHi,
-		Cells:                       validParams.cells,
-		USSBaseURL:                  validParams.implicitSubscription.baseURL,
-		NotifyForOperationalIntents: true,
-		NotifyForConstraints:        validParams.implicitSubscription.forConstraints,
-		ImplicitSubscription:        true,
-	}
-	return r.UpsertSubscription(ctx, &subToUpsert)
-}
-
 // upsertOperationalIntentReference inserts or updates an Operational Intent.
 // If the ovn argument is empty (""), it will attempt to create a new Operational Intent.
 func (a *Server) upsertOperationalIntentReference(ctx context.Context, now time.Time, authorizedManager *api.AuthorizationResult, entityid restapi.EntityID, ovn restapi.EntityOVN, params *restapi.PutOperationalIntentReferenceParameters,
@@ -564,38 +502,16 @@ func (a *Server) upsertOperationalIntentReference(ctx context.Context, now time.
 	if err != nil {
 		return nil, nil, stacktrace.PropagateWithCode(err, dsserr.BadRequest, "Failed to validate Operational Intent Reference upsert parameters")
 	}
-	manager, err := checkUpsertPermissionsAndReturnManager(authorizedManager, validParams.state)
+	manager, err := checkUpsertPermissionsAndReturnManager(authorizedManager, validParams.State)
 	if err != nil {
 		return nil, nil, stacktrace.PropagateWithCode(err, dsserr.PermissionDenied, "Caller is not allowed to upsert with the requested state")
 	}
 
-	// Pre-generate the implicit subscription ID so the raft applier is deterministic.
-	var newImplicitSubID dssmodels.ID
-	if validParams.implicitSubscription.requested {
-		newImplicitSubID = dssmodels.ID(uuid.New().String())
-	}
-
 	payload := &scdraftstore.UpsertOperationalIntentTransactionPayload{
-		Manager:        manager,
-		ID:             validParams.id,
-		Ovn:            validParams.ovn,
-		NewOvn:         validParams.newOVN,
-		State:          validParams.state,
-		USSBaseURL:     validParams.ussBaseURL,
-		SubscriptionID: validParams.subscriptionID,
-		ImplicitSubscription: scdraftstore.ImplicitSubscriptionParams{
-			Requested:      validParams.implicitSubscription.requested,
-			NewSubID:       newImplicitSubID,
-			BaseURL:        validParams.implicitSubscription.baseURL,
-			ForConstraints: validParams.implicitSubscription.forConstraints,
-		},
-		StartTime:  validParams.uExtent.StartTime,
-		EndTime:    validParams.uExtent.EndTime,
-		AltitudeLo: validParams.uExtent.SpatialVolume.AltitudeLo,
-		AltitudeHi: validParams.uExtent.SpatialVolume.AltitudeHi,
-		Cells:      validParams.cells,
+		Manager:     manager,
+		ValidParams: validParams,
 	}
-	for ovn := range validParams.key {
+	for ovn := range validParams.Key {
 		payload.Key = append(payload.Key, ovn)
 	}
 
@@ -604,7 +520,7 @@ func (a *Server) upsertOperationalIntentReference(ctx context.Context, now time.
 	action := func(ctx context.Context, r repos.Repository) (err error) {
 
 		// Get existing OperationalIntent, if any
-		old, err := r.GetOperationalIntent(ctx, validParams.id)
+		old, err := r.GetOperationalIntent(ctx, validParams.ID)
 		if err != nil {
 			return stacktrace.Propagate(err, "Could not get OperationalIntent from repo")
 		}
@@ -618,17 +534,17 @@ func (a *Server) upsertOperationalIntentReference(ctx context.Context, now time.
 			subscriptionIds = append(subscriptionIds, *old.SubscriptionID)
 		}
 
-		if !validParams.subscriptionID.Empty() {
-			subscriptionIds = append(subscriptionIds, validParams.subscriptionID)
+		if !validParams.SubscriptionID.Empty() {
+			subscriptionIds = append(subscriptionIds, validParams.SubscriptionID)
 		}
 
-		err = r.LockSubscriptionsOnCells(ctx, validParams.cells, subscriptionIds, validParams.uExtent.StartTime, validParams.uExtent.EndTime)
+		err = r.LockSubscriptionsOnCells(ctx, validParams.Cells, subscriptionIds, validParams.UExtent.StartTime, validParams.UExtent.EndTime)
 		if err != nil {
 			return stacktrace.Propagate(err, "Unable to acquire lock")
 		}
 
 		// Validate the request against the previous OIR
-		if err := repos.ValidateUpsertRequestAgainstPreviousOIR(manager, validParams.ovn, old); err != nil {
+		if err := repos.ValidateUpsertRequestAgainstPreviousOIR(manager, validParams.OVN, old); err != nil {
 			return stacktrace.PropagateWithCode(err, stacktrace.GetCode(err), "Request validation failed")
 		}
 
@@ -639,7 +555,7 @@ func (a *Server) upsertOperationalIntentReference(ctx context.Context, now time.
 		)
 		if old != nil {
 			version = old.Version + 1
-			pastOVNs = append(old.PastOVNs, validParams.ovn)
+			pastOVNs = append(old.PastOVNs, validParams.OVN)
 
 			// Fetch the previous OIR's subscription if it exists
 			if old.SubscriptionID != nil {
@@ -651,10 +567,10 @@ func (a *Server) upsertOperationalIntentReference(ctx context.Context, now time.
 		}
 
 		// Determine if the previous subscription is being replaced and if it will need to be cleaned up
-		previousSubIsBeingReplaced := previousSub != nil && validParams.subscriptionID != previousSub.ID
+		previousSubIsBeingReplaced := previousSub != nil && validParams.SubscriptionID != previousSub.ID
 		removePreviousImplicitSubscription := false
 		if previousSubIsBeingReplaced {
-			removePreviousImplicitSubscription, err = repos.SubscriptionIsImplicitAndOnlyAttachedToOIR(ctx, r, validParams.id, previousSub)
+			removePreviousImplicitSubscription, err = repos.SubscriptionIsImplicitAndOnlyAttachedToOIR(ctx, r, validParams.ID, previousSub)
 			if err != nil {
 				return stacktrace.Propagate(err, "Could not determine if previous Subscription can be removed")
 			}
@@ -663,14 +579,14 @@ func (a *Server) upsertOperationalIntentReference(ctx context.Context, now time.
 		// attachedSub is the subscription that will end up being attached to the OIR
 		// it defaults to the previous subscription (which may be nil), and may be updated if required by the parameters
 		attachedSub := previousSub
-		if validParams.subscriptionID.Empty() {
+		if validParams.SubscriptionID.Empty() {
 			// No subscription ID was provided:
 			// check if an implicit subscription should be created, otherwise do nothing
-			if validParams.implicitSubscription.requested {
+			if validParams.ImplicitSubscription.Requested {
 				// Parameters for a new implicit subscription have been passed: we will create
 				// a new implicit subscription even if another subscription was attached to this OIR before,
 				// regardless of whether it was an implicit subscription or not.
-				if attachedSub, err = createAndStoreNewImplicitSubscription(ctx, r, manager, dssmodels.ID(uuid.New().String()), validParams); err != nil {
+				if attachedSub, err = repos.CreateAndStoreNewImplicitSubscription(ctx, r, manager, validParams); err != nil {
 					return stacktrace.Propagate(err, "Failed to create implicit subscription")
 				}
 			} else {
@@ -684,12 +600,12 @@ func (a *Server) upsertOperationalIntentReference(ctx context.Context, now time.
 			// in order to ensure it correctly covers the OIR.
 			// We do the check below in order to avoid re-fetching the subscription if it has not changed
 			if attachedSub == nil || previousSubIsBeingReplaced {
-				attachedSub, err = r.GetSubscription(ctx, validParams.subscriptionID)
+				attachedSub, err = r.GetSubscription(ctx, validParams.SubscriptionID)
 				if err != nil {
 					return stacktrace.Propagate(err, "Unable to get requested Subscription from store")
 				}
 				if attachedSub == nil {
-					return stacktrace.NewErrorWithCode(dsserr.BadRequest, "Specified Subscription %s does not exist", validParams.subscriptionID)
+					return stacktrace.NewErrorWithCode(dsserr.BadRequest, "Specified Subscription %s does not exist", validParams.SubscriptionID)
 				}
 			}
 
@@ -702,28 +618,28 @@ func (a *Server) upsertOperationalIntentReference(ctx context.Context, now time.
 						dsserr.PermissionDenied, "Specificed Subscription is owned by different client"),
 					// The propagation message will end in the logs and help with debugging.
 					"Subscription %s owned by %s, but %s attempted to use it for an OperationalIntent",
-					validParams.subscriptionID,
+					validParams.SubscriptionID,
 					attachedSub.Manager,
 					manager,
 				)
 			}
 
 			// We need to ensure the subscription covers the OIR's geo-temporal extent
-			attachedSub, err = repos.EnsureSubscriptionCoversOIR(ctx, r, attachedSub, validParams.uExtent, validParams.cells)
+			attachedSub, err = repos.EnsureSubscriptionCoversOIR(ctx, r, attachedSub, validParams.UExtent, validParams.Cells)
 			if err != nil {
 				return stacktrace.Propagate(err, "Failed to ensure subscription covers OIR")
 			}
 		}
 
-		if validParams.state.RequiresKey() {
-			responseConflict, err = repos.ValidateKeyAndProvideConflictResponse(ctx, r, manager, validParams.uExtent, validParams.key, validParams.id, attachedSub)
+		if validParams.State.RequiresKey() {
+			responseConflict, err = repos.ValidateKeyAndProvideConflictResponse(ctx, r, manager, validParams.UExtent, validParams.Key, validParams.ID, attachedSub)
 			if err != nil {
 				return stacktrace.PropagateWithCode(err, stacktrace.GetCode(err), "Failed to validate key")
 			}
 		}
 
 		// Construct the new OperationalIntent
-		op := validParams.toOIR(manager, attachedSub, version, pastOVNs)
+		op := validParams.ToOIR(manager, attachedSub, version, pastOVNs)
 
 		// Upsert the OperationalIntent
 		op, err = r.UpsertOperationalIntent(ctx, op)
@@ -739,7 +655,7 @@ func (a *Server) upsertOperationalIntentReference(ctx context.Context, now time.
 			}
 		}
 
-		notifyVolume, err := repos.ComputeNotificationVolume(old, validParams.uExtent)
+		notifyVolume, err := repos.ComputeNotificationVolume(old, validParams.UExtent)
 		if err != nil {
 			return stacktrace.Propagate(err, "Failed to compute notification volume")
 		}

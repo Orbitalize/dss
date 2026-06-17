@@ -279,20 +279,9 @@ type ImplicitSubscriptionParams struct {
 // UpsertOperationalIntentTransactionPayload is the serialized form of all pre-validated
 // parameters passed through Raft for an OIR upsert.
 type UpsertOperationalIntentTransactionPayload struct {
-	Manager              dssmodels.Manager                `json:"manager"`
-	ID                   dssmodels.ID                     `json:"id"`
-	Ovn                  scdmodels.OVN                    `json:"ovn"`
-	NewOvn               scdmodels.OVN                    `json:"new_ovn,omitempty"`
-	State                scdmodels.OperationalIntentState `json:"state"`
-	USSBaseURL           string                           `json:"uss_base_url"`
-	SubscriptionID       dssmodels.ID                     `json:"subscription_id,omitempty"`
-	ImplicitSubscription ImplicitSubscriptionParams       `json:"implicit_subscription"`
-	StartTime            *time.Time                       `json:"start_time,omitempty"`
-	EndTime              *time.Time                       `json:"end_time,omitempty"`
-	AltitudeLo           *float32                         `json:"altitude_lo,omitempty"`
-	AltitudeHi           *float32                         `json:"altitude_hi,omitempty"`
-	Cells                s2.CellUnion                     `json:"cells"`
-	Key                  []scdmodels.OVN                  `json:"key"`
+	Manager     dssmodels.Manager     `json:"manager"`
+	ValidParams *repos.ValidOIRParams `json:"valid_params"`
+	Key         []scdmodels.OVN       `json:"key"`
 }
 
 // UpsertOperationalIntentTransactionResult carries the response produced by the applier
@@ -310,33 +299,17 @@ func (r *repo) upsertOperationalIntentTransactionApplier(ctx context.Context, pr
 
 	upsertResult := &UpsertOperationalIntentTransactionResult{}
 
-	// Reconstruct the 4D volume from individual serializable fields.
-	uExtent := &dssmodels.Volume4D{
-		StartTime: payload.StartTime,
-		EndTime:   payload.EndTime,
-		SpatialVolume: &dssmodels.Volume3D{
-			AltitudeHi: payload.AltitudeHi,
-			AltitudeLo: payload.AltitudeLo,
-			Footprint: dssmodels.GeometryFunc(func() (s2.CellUnion, error) {
-				return payload.Cells, nil
-			}),
-		},
-	}
-
-	// Reconstruct key set.
 	key := make(map[scdmodels.OVN]bool, len(payload.Key))
 	for _, ovn := range payload.Key {
 		key[ovn] = true
 	}
 
-	// --- Read phase (no writes yet) ---
-
-	old, err := r.memRepo.GetOperationalIntent(ctx, payload.ID)
+	old, err := r.memRepo.GetOperationalIntent(ctx, payload.ValidParams.ID)
 	if err != nil {
 		return upsertResult, stacktrace.Propagate(err, "Could not get OperationalIntent from repo")
 	}
 
-	if err := repos.ValidateUpsertRequestAgainstPreviousOIR(payload.Manager, payload.Ovn, old); err != nil {
+	if err := repos.ValidateUpsertRequestAgainstPreviousOIR(payload.Manager, payload.ValidParams.OVN, old); err != nil {
 		return upsertResult, stacktrace.PropagateWithCode(err, stacktrace.GetCode(err), "Request validation failed")
 	}
 
@@ -347,7 +320,7 @@ func (r *repo) upsertOperationalIntentTransactionApplier(ctx context.Context, pr
 	)
 	if old != nil {
 		version = old.Version + 1
-		pastOVNs = append(old.PastOVNs, payload.Ovn)
+		pastOVNs = append(old.PastOVNs, payload.ValidParams.OVN)
 
 		if old.SubscriptionID != nil {
 			previousSub, err = r.memRepo.GetSubscription(ctx, *old.SubscriptionID)
@@ -357,125 +330,127 @@ func (r *repo) upsertOperationalIntentTransactionApplier(ctx context.Context, pr
 		}
 	}
 
-	previousSubIsBeingReplaced := previousSub != nil && payload.SubscriptionID != previousSub.ID
+	previousSubIsBeingReplaced := previousSub != nil && payload.ValidParams.SubscriptionID != previousSub.ID
 	removePreviousImplicitSubscription := false
 	if previousSubIsBeingReplaced {
-		removePreviousImplicitSubscription, err = repos.SubscriptionIsImplicitAndOnlyAttachedToOIR(ctx, r.memRepo, payload.ID, previousSub)
+		removePreviousImplicitSubscription, err = repos.SubscriptionIsImplicitAndOnlyAttachedToOIR(ctx, r.memRepo, payload.ValidParams.ID, previousSub)
 		if err != nil {
 			return upsertResult, stacktrace.Propagate(err, "Could not determine if previous Subscription can be removed")
 		}
 	}
 
-	// Fetch the explicit subscription if needed (read-only).
-	var explicitSub *scdmodels.Subscription
-	if !payload.SubscriptionID.Empty() && (previousSub == nil || previousSubIsBeingReplaced) {
-		explicitSub, err = r.memRepo.GetSubscription(ctx, payload.SubscriptionID)
-		if err != nil {
-			return upsertResult, stacktrace.Propagate(err, "Unable to get requested Subscription from store")
-		}
-		if explicitSub == nil {
-			return upsertResult, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Specified Subscription %s does not exist", payload.SubscriptionID)
-		}
-		if explicitSub.Manager != payload.Manager {
-			return upsertResult, stacktrace.Propagate(
-				stacktrace.NewErrorWithCode(dsserr.PermissionDenied, "Specified Subscription is owned by different client"),
-				"Subscription %s owned by %s, but %s attempted to use it for an OperationalIntent",
-				payload.SubscriptionID, explicitSub.Manager, payload.Manager,
-			)
-		}
-	} else if !payload.SubscriptionID.Empty() {
-		explicitSub = previousSub
-	}
-
-	// --- Write phase ---
-
+	// Every error path after this point must restore the store to the checkpoint, since we may have already written to the store.
 	cp := r.memStore.Checkpoint()
 
 	attachedSub := previousSub
-	if payload.SubscriptionID.Empty() {
-		if payload.ImplicitSubscription.Requested {
-			subToUpsert := &scdmodels.Subscription{
-				ID:                          payload.ImplicitSubscription.NewSubID,
-				Manager:                     payload.Manager,
-				StartTime:                   uExtent.StartTime,
-				EndTime:                     uExtent.EndTime,
-				AltitudeLo:                  uExtent.SpatialVolume.AltitudeLo,
-				AltitudeHi:                  uExtent.SpatialVolume.AltitudeHi,
-				Cells:                       payload.Cells,
-				USSBaseURL:                  payload.ImplicitSubscription.BaseURL,
-				NotifyForOperationalIntents: true,
-				NotifyForConstraints:        payload.ImplicitSubscription.ForConstraints,
-				ImplicitSubscription:        true,
-			}
-			attachedSub, err = r.memRepo.UpsertSubscription(ctx, subToUpsert)
-			if err != nil {
-				_ = r.memStore.Restore(cp)
+	if payload.ValidParams.SubscriptionID.Empty() {
+		if payload.ValidParams.ImplicitSubscription.Requested {
+			if attachedSub, err = repos.CreateAndStoreNewImplicitSubscription(ctx, r.memRepo, payload.Manager, payload.ValidParams); err != nil {
+				restoreErr := r.memStore.Restore(cp)
+				if restoreErr != nil {
+					return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
+				}
 				return upsertResult, stacktrace.Propagate(err, "Failed to create implicit subscription")
 			}
 		} else {
 			attachedSub = nil
 		}
 	} else {
-		attachedSub = explicitSub
-		// Extend implicit subscription bounds if needed (may write).
-		attachedSub, err = repos.EnsureSubscriptionCoversOIR(ctx, r.memRepo, attachedSub, uExtent, payload.Cells)
+		if attachedSub == nil || previousSubIsBeingReplaced {
+			attachedSub, err = r.memRepo.GetSubscription(ctx, payload.ValidParams.SubscriptionID)
+			if err != nil {
+				restoreErr := r.memStore.Restore(cp)
+				if restoreErr != nil {
+					return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
+				}
+				return upsertResult, stacktrace.Propagate(err, "Failed to ensure subscription covers OIR")
+			}
+
+			if attachedSub == nil {
+				restoreErr := r.memStore.Restore(cp)
+				if restoreErr != nil {
+					return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
+				}
+				return upsertResult, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Specified Subscription %s does not exist", payload.ValidParams.SubscriptionID)
+			}
+		}
+
+		if attachedSub.Manager != payload.Manager {
+			restoreErr := r.memStore.Restore(cp)
+			if restoreErr != nil {
+				return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
+			}
+
+			return upsertResult, stacktrace.Propagate(
+				stacktrace.NewErrorWithCode(
+					dsserr.PermissionDenied, "Specificed Subscription is owned by different client"),
+				"Subscription %s owned by %s, but %s attempted to use it for an OperationalIntent",
+				payload.ValidParams.SubscriptionID,
+				attachedSub.Manager,
+				payload.Manager,
+			)
+		}
+
+		// We need to ensure the subscription covers the OIR's geo-temporal extent
+		attachedSub, err = repos.EnsureSubscriptionCoversOIR(ctx, r.memRepo, attachedSub, payload.ValidParams.UExtent, payload.ValidParams.Cells)
 		if err != nil {
-			_ = r.memStore.Restore(cp)
+			restoreErr := r.memStore.Restore(cp)
+			if restoreErr != nil {
+				return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
+			}
+
 			return upsertResult, stacktrace.Propagate(err, "Failed to ensure subscription covers OIR")
 		}
 	}
 
-	if payload.State.RequiresKey() {
-		responseConflict, err := repos.ValidateKeyAndProvideConflictResponse(ctx, r.memRepo, payload.Manager, uExtent, key, payload.ID, attachedSub)
+	if payload.ValidParams.State.RequiresKey() {
+		upsertResult.ResponseConflict, err = repos.ValidateKeyAndProvideConflictResponse(ctx, r.memRepo, payload.Manager, payload.ValidParams.UExtent, payload.ValidParams.Key, payload.ValidParams.ID, attachedSub)
 		if err != nil {
-			_ = r.memStore.Restore(cp)
-			upsertResult.ResponseConflict = responseConflict
+			restoreErr := r.memStore.Restore(cp)
+			if restoreErr != nil {
+				return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
+			}
+
 			return upsertResult, stacktrace.PropagateWithCode(err, stacktrace.GetCode(err), "Failed to validate key")
 		}
 	}
 
-	var subID *dssmodels.ID
-	if attachedSub != nil {
-		subID = &attachedSub.ID
-	}
-	op := &scdmodels.OperationalIntent{
-		ID:             payload.ID,
-		Manager:        payload.Manager,
-		Version:        version,
-		OVN:            payload.NewOvn,
-		PastOVNs:       pastOVNs,
-		StartTime:      uExtent.StartTime,
-		EndTime:        uExtent.EndTime,
-		AltitudeLower:  uExtent.SpatialVolume.AltitudeLo,
-		AltitudeUpper:  uExtent.SpatialVolume.AltitudeHi,
-		Cells:          payload.Cells,
-		USSBaseURL:     payload.USSBaseURL,
-		SubscriptionID: subID,
-		State:          payload.State,
-	}
+	op := payload.ValidParams.ToOIR(payload.Manager, attachedSub, version, pastOVNs)
 
 	op, err = r.memRepo.UpsertOperationalIntent(ctx, op)
 	if err != nil {
-		_ = r.memStore.Restore(cp)
+		restoreErr := r.memStore.Restore(cp)
+		if restoreErr != nil {
+			return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
+		}
 		return upsertResult, stacktrace.Propagate(err, "Failed to upsert OperationalIntent in repo")
 	}
 
 	if removePreviousImplicitSubscription {
 		if err = r.memRepo.DeleteSubscription(ctx, previousSub.ID); err != nil {
-			_ = r.memStore.Restore(cp)
+			restoreErr := r.memStore.Restore(cp)
+			if restoreErr != nil {
+				return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
+			}
 			return upsertResult, stacktrace.Propagate(err, "Unable to delete previous implicit Subscription")
 		}
 	}
 
-	notifyVolume, err := repos.ComputeNotificationVolume(old, uExtent)
+	notifyVolume, err := repos.ComputeNotificationVolume(old, payload.ValidParams.UExtent)
 	if err != nil {
-		_ = r.memStore.Restore(cp)
+		restoreErr := r.memStore.Restore(cp)
+		if restoreErr != nil {
+			return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
+		}
 		return upsertResult, stacktrace.Propagate(err, "Failed to compute notification volume")
 	}
 
 	subsToNotify, err := repos.GetRelevantSubscriptionsAndIncrementIndices(ctx, r.memRepo, notifyVolume)
 	if err != nil {
-		_ = r.memStore.Restore(cp)
+		restoreErr := r.memStore.Restore(cp)
+		if restoreErr != nil {
+			return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
+		}
 		return upsertResult, stacktrace.Propagate(err, "Failed to notify relevant Subscriptions")
 	}
 

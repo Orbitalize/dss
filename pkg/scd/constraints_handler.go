@@ -95,7 +95,7 @@ func (a *Server) DeleteConstraintReference(ctx context.Context, req *restapi.Del
 		// Return response to client
 		response = &restapi.ChangeConstraintReferenceResponse{
 			ConstraintReference: *old.ToRest(),
-			Subscribers:         makeSubscribersToNotify(subs),
+			Subscribers:         repos.MakeSubscribersToNotify(subs),
 		}
 
 		return nil
@@ -326,7 +326,7 @@ func (a *Server) PutConstraintReference(ctx context.Context, manager string, ent
 		// Return response to client
 		response = &restapi.ChangeConstraintReferenceResponse{
 			ConstraintReference: *constraint.ToRest(),
-			Subscribers:         makeSubscribersToNotify(subs),
+			Subscribers:         repos.MakeSubscribersToNotify(subs),
 		}
 
 		return nil
