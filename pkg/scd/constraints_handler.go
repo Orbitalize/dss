@@ -11,6 +11,7 @@ import (
 	dssmodels "github.com/interuss/dss/pkg/models"
 	scdmodels "github.com/interuss/dss/pkg/scd/models"
 	"github.com/interuss/dss/pkg/scd/repos"
+	scdraftstore "github.com/interuss/dss/pkg/scd/store/raftstore"
 	"github.com/interuss/stacktrace"
 	"github.com/jackc/pgx/v5"
 )
@@ -101,7 +102,7 @@ func (a *Server) DeleteConstraintReference(ctx context.Context, req *restapi.Del
 		return nil
 	}
 
-	_, err = a.Store.Transact(ctx, "", nil, action)
+	raftResult, err := a.Store.Transact(ctx, scdraftstore.DeleteConstraintTransaction, req, action)
 	if err != nil {
 		err = stacktrace.Propagate(err, "Could not delete constraint")
 		errResp := &restapi.ErrorResponse{Message: dsserr.Handle(ctx, err)}
@@ -118,6 +119,15 @@ func (a *Server) DeleteConstraintReference(ctx context.Context, req *restapi.Del
 			return restapi.DeleteConstraintReferenceResponseSet{Response500: &api.InternalServerErrorBody{
 				ErrorMessage: *dsserr.Handle(ctx, stacktrace.Propagate(err, "Got an unexpected error"))}}
 		}
+	}
+
+	if raftResult != nil {
+		deleteConstraintResponse, ok := raftResult.(*restapi.ChangeConstraintReferenceResponse)
+		if !ok {
+			return restapi.DeleteConstraintReferenceResponseSet{Response500: &api.InternalServerErrorBody{
+				ErrorMessage: *dsserr.Handle(ctx, stacktrace.NewError("invalid result type"))}}
+		}
+		response = deleteConstraintResponse
 	}
 
 	return restapi.DeleteConstraintReferenceResponseSet{Response200: response}
@@ -160,7 +170,7 @@ func (a *Server) GetConstraintReference(ctx context.Context, req *restapi.GetCon
 		return nil
 	}
 
-	_, err = a.Store.Transact(ctx, "", nil, action)
+	raftResult, err := a.Store.Transact(ctx, scdraftstore.GetConstraintTransaction, req, action)
 	if err != nil {
 		err = stacktrace.Propagate(err, "Could not get constraint")
 		if stacktrace.GetCode(err) == dsserr.NotFound {
@@ -168,6 +178,15 @@ func (a *Server) GetConstraintReference(ctx context.Context, req *restapi.GetCon
 		}
 		return restapi.GetConstraintReferenceResponseSet{Response500: &api.InternalServerErrorBody{
 			ErrorMessage: *dsserr.Handle(ctx, stacktrace.Propagate(err, "Got an unexpected error"))}}
+	}
+
+	if raftResult != nil {
+		getConstraintResponse, ok := raftResult.(*restapi.GetConstraintReferenceResponse)
+		if !ok {
+			return restapi.GetConstraintReferenceResponseSet{Response500: &api.InternalServerErrorBody{
+				ErrorMessage: *dsserr.Handle(ctx, stacktrace.NewError("invalid result type"))}}
+		}
+		response = getConstraintResponse
 	}
 
 	return restapi.GetConstraintReferenceResponseSet{Response200: response}
@@ -244,6 +263,18 @@ func (a *Server) PutConstraintReference(ctx context.Context, manager string, ent
 	validParams, err := validateAndReturnConstraintUpsertParams(time.Now(), entityid, ovn, params, a.AllowHTTPBaseUrls)
 	if err != nil {
 		return nil, stacktrace.PropagateWithCode(err, dsserr.BadRequest, "Failed to validate Constraint upsert parameters")
+	}
+
+	payload := &scdraftstore.UpsertConstraintTransactionPayload{
+		Manager:    dssmodels.Manager(manager),
+		ID:         validParams.id,
+		Ovn:        scdmodels.OVN(ovn),
+		USSBaseURL: validParams.ussBaseURL,
+		StartTime:  validParams.uExtent.StartTime,
+		EndTime:    validParams.uExtent.EndTime,
+		AltitudeLo: validParams.uExtent.SpatialVolume.AltitudeLo,
+		AltitudeHi: validParams.uExtent.SpatialVolume.AltitudeHi,
+		Cells:      validParams.cells,
 	}
 
 	var response *restapi.ChangeConstraintReferenceResponse
@@ -332,9 +363,17 @@ func (a *Server) PutConstraintReference(ctx context.Context, manager string, ent
 		return nil
 	}
 
-	_, err = a.Store.Transact(ctx, "", nil, action)
+	raftResult, err := a.Store.Transact(ctx, scdraftstore.UpsertConstraintTransaction, payload, action)
 	if err != nil {
 		return nil, err // No need to Propagate this error as this is not a useful stacktrace line
+	}
+
+	if raftResult != nil {
+		upsertConstraintResponse, ok := raftResult.(*restapi.ChangeConstraintReferenceResponse)
+		if !ok {
+			return nil, stacktrace.NewError("invalid result type")
+		}
+		response = upsertConstraintResponse
 	}
 
 	return response, nil
@@ -460,10 +499,19 @@ func (a *Server) QueryConstraintReferences(ctx context.Context, req *restapi.Que
 		return nil
 	}
 
-	_, err = a.Store.Transact(ctx, "", nil, action)
+	raftResult, err := a.Store.Transact(ctx, scdraftstore.QueryConstraintTransaction, req, action)
 	if err != nil {
 		return restapi.QueryConstraintReferencesResponseSet{Response500: &api.InternalServerErrorBody{
 			ErrorMessage: *dsserr.Handle(ctx, stacktrace.Propagate(err, "Got an unexpected error"))}}
+	}
+
+	if raftResult != nil {
+		queryConstraintResponse, ok := raftResult.(*restapi.QueryConstraintReferencesResponse)
+		if !ok {
+			return restapi.QueryConstraintReferencesResponseSet{Response500: &api.InternalServerErrorBody{
+				ErrorMessage: *dsserr.Handle(ctx, stacktrace.NewError("invalid result type"))}}
+		}
+		response = queryConstraintResponse
 	}
 
 	return restapi.QueryConstraintReferencesResponseSet{Response200: response}

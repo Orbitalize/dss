@@ -324,6 +324,18 @@ func (r *repo) Apply(ctx context.Context, proposal consensus.Proposal) (any, err
 	case UpsertOperationalIntentTransaction:
 		return r.upsertOperationalIntentTransactionApplier(ctx, proposal)
 
+	case DeleteConstraintTransaction:
+		return r.deleteConstraintTransactionApplier(ctx, proposal)
+
+	case GetConstraintTransaction:
+		return r.getConstraintTransactionApplier(ctx, proposal)
+
+	case QueryConstraintTransaction:
+		return r.queryConstraintTransactionApplier(ctx, proposal)
+
+	case UpsertConstraintTransaction:
+		return r.upsertConstraintTransactionApplier(ctx, proposal)
+
 	default:
 		return nil, stacktrace.NewError("unknown request type: %q", proposal.RequestType)
 	}
