@@ -312,6 +312,18 @@ func (r *repo) Apply(ctx context.Context, proposal consensus.Proposal) (any, err
 	case countSubscriptions:
 		return r.memRepo.CountSubscriptions(ctx)
 
+	case DeleteOperationalIntentTransaction:
+		return r.deleteOperationalIntentTransactionApplier(ctx, proposal)
+
+	case GetOperationalIntentTransaction:
+		return r.getOperationalIntentTransactionApplier(ctx, proposal)
+
+	case QueryOperationalIntentTransaction:
+		return r.queryOperationalIntentTransactionApplier(ctx, proposal)
+
+	case UpsertOperationalIntentTransaction:
+		return r.upsertOperationalIntentTransactionApplier(ctx, proposal)
+
 	default:
 		return nil, stacktrace.NewError("unknown request type: %q", proposal.RequestType)
 	}
