@@ -13,6 +13,7 @@ import (
 	dssmodels "github.com/interuss/dss/pkg/models"
 	scdmodels "github.com/interuss/dss/pkg/scd/models"
 	"github.com/interuss/dss/pkg/scd/repos"
+	scdraftstore "github.com/interuss/dss/pkg/scd/store/raftstore"
 	"github.com/interuss/stacktrace"
 )
 
@@ -165,7 +166,7 @@ func (a *Server) DeleteOperationalIntentReference(ctx context.Context, req *rest
 		return nil
 	}
 
-	_, err = a.Store.Transact(ctx, "", nil, action)
+	_, err = a.Store.Transact(ctx, scdraftstore.DeleteOperationalIntentTransaction, req, action)
 	if err != nil {
 		err = stacktrace.Propagate(err, "Could not delete operational intent")
 		errResp := &restapi.ErrorResponse{Message: dsserr.Handle(ctx, err)}
