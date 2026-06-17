@@ -166,7 +166,7 @@ func (a *Server) DeleteOperationalIntentReference(ctx context.Context, req *rest
 		return nil
 	}
 
-	_, err = a.Store.Transact(ctx, scdraftstore.DeleteOperationalIntentTransaction, req, action)
+	raftResult, err := a.Store.Transact(ctx, scdraftstore.DeleteOperationalIntentTransaction, req, action)
 	if err != nil {
 		err = stacktrace.Propagate(err, "Could not delete operational intent")
 		errResp := &restapi.ErrorResponse{Message: dsserr.Handle(ctx, err)}
@@ -181,6 +181,15 @@ func (a *Server) DeleteOperationalIntentReference(ctx context.Context, req *rest
 			return restapi.DeleteOperationalIntentReferenceResponseSet{Response500: &api.InternalServerErrorBody{
 				ErrorMessage: *dsserr.Handle(ctx, stacktrace.Propagate(err, "Got an unexpected error"))}}
 		}
+	}
+
+	if raftResult != nil {
+		deleteOIRResponse, ok := raftResult.(*restapi.ChangeOperationalIntentReferenceResponse)
+		if !ok {
+			return restapi.DeleteOperationalIntentReferenceResponseSet{Response500: &api.InternalServerErrorBody{
+				ErrorMessage: *dsserr.Handle(ctx, stacktrace.NewError("invalid result type"))}}
+		}
+		response = deleteOIRResponse
 	}
 
 	return restapi.DeleteOperationalIntentReferenceResponseSet{Response200: response}

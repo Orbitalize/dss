@@ -123,7 +123,7 @@ func (r *repo) deleteOperationalIntentTransactionApplier(ctx context.Context, pr
 		return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Missing OVN for operational intent to modify")
 	}
 
-	old, err := r.GetOperationalIntent(ctx, id)
+	old, err := r.memRepo.GetOperationalIntent(ctx, id)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "Unable to get OperationIntent from repo")
 	}
@@ -131,7 +131,6 @@ func (r *repo) deleteOperationalIntentTransactionApplier(ctx context.Context, pr
 		return nil, stacktrace.NewErrorWithCode(dsserr.NotFound, "OperationalIntent %s not found", id)
 	}
 
-	// Validate deletion request
 	if old.Manager != dssmodels.Manager(*req.Auth.ClientID) {
 		return nil, stacktrace.NewErrorWithCode(dsserr.PermissionDenied,
 			"OperationalIntent owned by %s, but %s attempted to delete", old.Manager, *req.Auth.ClientID)
@@ -142,24 +141,10 @@ func (r *repo) deleteOperationalIntentTransactionApplier(ctx context.Context, pr
 			"Current version is %s but client specified version %s", old.OVN, ovn)
 	}
 
-	// Lock subscriptions based on the cell and subscriptions we're going to use
-	// to reduce the number of retries under concurrent load.
-	// See issue #1002 for details.
-	var subscriptionIds = make([]dssmodels.ID, 0)
-
-	if old.SubscriptionID != nil {
-		subscriptionIds = append(subscriptionIds, *old.SubscriptionID)
-	}
-
-	err = r.LockSubscriptionsOnCells(ctx, old.Cells, subscriptionIds, old.StartTime, old.EndTime)
-	if err != nil {
-		return nil, stacktrace.Propagate(err, "Unable to acquire lock")
-	}
-
 	// Get the Subscription supporting the OperationalIntent, if one is defined
 	var previousSubscription *scdmodels.Subscription
 	if old.SubscriptionID != nil {
-		previousSubscription, err = r.GetSubscription(ctx, *old.SubscriptionID)
+		previousSubscription, err = r.memRepo.GetSubscription(ctx, *old.SubscriptionID)
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Unable to get OperationalIntent's Subscription from repo")
 		}
@@ -191,14 +176,14 @@ func (r *repo) deleteOperationalIntentTransactionApplier(ctx context.Context, pr
 	}
 
 	// Delete OperationalIntent from repo
-	if err := r.DeleteOperationalIntent(ctx, id); err != nil {
+	if err := r.memRepo.DeleteOperationalIntent(ctx, id); err != nil {
 		return nil, stacktrace.Propagate(err, "Unable to delete OperationalIntent from repo")
 	}
 
 	// removeImplicitSubscription is only true if the OIR had a subscription defined
 	if removeImplicitSubscription {
 		// Automatically remove a now-unused implicit Subscription
-		err = r.DeleteSubscription(ctx, previousSubscription.ID)
+		err = r.memRepo.DeleteSubscription(ctx, previousSubscription.ID)
 		if err != nil {
 			return nil, stacktrace.Propagate(err, "Unable to delete associated implicit Subscription")
 		}
