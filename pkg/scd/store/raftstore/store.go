@@ -336,6 +336,24 @@ func (r *repo) Apply(ctx context.Context, proposal consensus.Proposal) (any, err
 	case UpsertConstraintTransaction:
 		return r.upsertConstraintTransactionApplier(ctx, proposal)
 
+	case UpsertSubscriptionTransaction:
+		return r.upsertSubscriptionTransactionApplier(ctx, proposal)
+
+	case DeleteSubscriptionTransaction:
+		return r.deleteSubscriptionTransactionApplier(ctx, proposal)
+
+	case GetSubscriptionTransaction:
+		return r.getSubscriptionTransactionApplier(ctx, proposal)
+
+	case QuerySubscriptionTransaction:
+		return r.querySubscriptionTransactionApplier(ctx, proposal)
+
+	case GetUSSAvailabilityTransaction:
+		return r.getUSSAvailabilityTransactionApplier(ctx, proposal)
+
+	case SetUSSAvailabilityTransaction:
+		return r.setUSSAvailabilityTransactionApplier(ctx, proposal)
+
 	default:
 		return nil, stacktrace.NewError("unknown request type: %q", proposal.RequestType)
 	}
