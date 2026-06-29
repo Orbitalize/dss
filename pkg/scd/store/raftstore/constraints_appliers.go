@@ -10,6 +10,7 @@ import (
 	dsserr "github.com/interuss/dss/pkg/errors"
 	dssmodels "github.com/interuss/dss/pkg/models"
 	"github.com/interuss/dss/pkg/raftstore/consensus"
+	"github.com/interuss/dss/pkg/scd/actions"
 	scdmodels "github.com/interuss/dss/pkg/scd/models"
 	"github.com/interuss/dss/pkg/scd/repos"
 	"github.com/interuss/stacktrace"
@@ -29,74 +30,27 @@ type UpsertConstraintTransactionPayload struct {
 }
 
 func (r *repo) deleteConstraintTransactionApplier(ctx context.Context, proposal consensus.Proposal, mem repos.Repository) (*restapi.ChangeConstraintReferenceResponse, error) {
-	var req *restapi.DeleteConstraintReferenceRequest
-	if err := json.Unmarshal(proposal.Value, &req); err != nil {
-		return nil, stacktrace.Propagate(err, "failed to unmarshal delete constraint reference request")
-	}
-
-	id, err := dssmodels.IDFromString(string(req.Entityid))
+	action, err := actions.NewDeleteConstraintAction(proposal.Value)
 	if err != nil {
-		return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Invalid ID format: `%s`", req.Entityid)
-	}
-
-	ovn := scdmodels.OVN(req.Ovn)
-	if ovn == "" {
-		return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Missing OVN for constraint to modify")
-	}
-
-	if req.Auth.ClientID == nil {
-		return nil, stacktrace.NewErrorWithCode(dsserr.PermissionDenied, "Missing manager")
-	}
-
-	old, err := mem.GetConstraint(ctx, id)
-	switch {
-	case err == pgx.ErrNoRows:
-		return nil, stacktrace.NewErrorWithCode(dsserr.NotFound, "Constraint %s not found", id)
-	case err != nil:
-		return nil, stacktrace.Propagate(err, "Unable to get Constraint from repo")
-	case old == nil:
-		return nil, stacktrace.NewErrorWithCode(dsserr.NotFound, "Constraint %s not found", id)
-	case old.Manager != dssmodels.Manager(*req.Auth.ClientID):
-		return nil, stacktrace.NewErrorWithCode(dsserr.PermissionDenied,
-			"Constraint owned by %s, but %s attempted to delete", old.Manager, *req.Auth.ClientID)
-	case old.OVN != ovn:
-		return nil, stacktrace.NewErrorWithCode(dsserr.VersionMismatch,
-			"Current version is %s but client specified version %s", old.OVN, ovn)
-	}
-
-	notifyVolume := &dssmodels.Volume4D{
-		StartTime: old.StartTime,
-		EndTime:   old.EndTime,
-		SpatialVolume: &dssmodels.Volume3D{
-			AltitudeHi: old.AltitudeUpper,
-			AltitudeLo: old.AltitudeLower,
-			Footprint: dssmodels.GeometryFunc(func() (s2.CellUnion, error) {
-				return old.Cells, nil
-			}),
-		},
+		return nil, err
 	}
 
 	cp := r.memStore.Checkpoint()
 
-	if err := mem.DeleteConstraint(ctx, id); err != nil {
-		if restoreErr := r.memStore.Restore(cp); restoreErr != nil {
-			return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
-		}
-		return nil, stacktrace.Propagate(err, "Unable to delete Constraint from repo")
-	}
-
-	subs, err := mem.IncrementNotificationIndicesForConstraints(ctx, notifyVolume)
+	result, err := action.Run(ctx, mem)
 	if err != nil {
 		if restoreErr := r.memStore.Restore(cp); restoreErr != nil {
 			return nil, stacktrace.Propagate(restoreErr, "Failed to restore store")
 		}
-		return nil, stacktrace.Propagate(err, "Unable to increment notification indices")
+		return nil, err
 	}
 
-	return &restapi.ChangeConstraintReferenceResponse{
-		ConstraintReference: *old.ToRest(),
-		Subscribers:         repos.MakeSubscribersToNotify(subs),
-	}, nil
+	resp, ok := result.(*restapi.ChangeConstraintReferenceResponse)
+	if !ok {
+		return nil, stacktrace.NewError("invalid result type: %T", result)
+	}
+
+	return resp, nil
 }
 
 func (r *repo) getConstraintTransactionApplier(ctx context.Context, proposal consensus.Proposal, mem repos.Repository) (*restapi.GetConstraintReferenceResponse, error) {

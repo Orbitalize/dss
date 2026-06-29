@@ -10,6 +10,7 @@ import (
 	dssmodels "github.com/interuss/dss/pkg/models"
 	"github.com/interuss/dss/pkg/raftstore"
 	"github.com/interuss/dss/pkg/raftstore/consensus"
+	"github.com/interuss/dss/pkg/scd/actions"
 	scdmodels "github.com/interuss/dss/pkg/scd/models"
 	"github.com/interuss/dss/pkg/scd/repos"
 	scdmemstore "github.com/interuss/dss/pkg/scd/store/memstore"
@@ -53,7 +54,7 @@ const (
 	deleteConstraint  raftstore.RequestType = "deleteConstraint"
 	countConstraints  raftstore.RequestType = "countConstraints"
 
-	DeleteConstraintTransaction raftstore.RequestType = "deleteConstraintTransaction"
+	DeleteConstraintTransaction raftstore.RequestType = actions.DeleteConstraintRequestType
 	GetConstraintTransaction    raftstore.RequestType = "getConstraintTransaction"
 	QueryConstraintTransaction  raftstore.RequestType = "queryConstraintTransaction"
 	UpsertConstraintTransaction raftstore.RequestType = "upsertConstraintTransaction"

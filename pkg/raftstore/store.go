@@ -6,6 +6,7 @@ import (
 	"github.com/interuss/dss/pkg/logging"
 	"github.com/interuss/dss/pkg/raftstore/consensus"
 	raftparams "github.com/interuss/dss/pkg/raftstore/params"
+	"github.com/interuss/dss/pkg/store"
 	"github.com/interuss/dss/pkg/timestamp"
 	"github.com/interuss/stacktrace"
 	"go.uber.org/zap"
@@ -52,10 +53,10 @@ func Init[R any](ctx context.Context, logger *zap.Logger, params raftparams.Conn
 	return store, nil
 }
 
-// Transact proposes an entry to Raft and blocks until it is committed and applied.
+// Transact proposes action to Raft and blocks until it is committed and applied.
 // The processCommits loop will call Apply on the proposal when it is committed.
-func (s *Store[R]) Transact(ctx context.Context, requestType RequestType, payload any, _ func(context.Context, R) error) (any, error) {
-	return s.Consensus.ProposeValue(ctx, requestType, payload, s.raftRepo.IsReadOnly(requestType))
+func (s *Store[R]) Transact(ctx context.Context, action store.Action[R]) (any, error) {
+	return s.Consensus.ProposeValue(ctx, action.RequestType(), action.Payload(), action.IsReadOnly())
 }
 
 func (s *Store[R]) Interact(_ context.Context) (R, error) {

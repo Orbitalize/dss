@@ -173,11 +173,15 @@ func (s *Store[R]) Interact(_ context.Context) (R, error) {
 	return s.newRepo(s.Pool), nil
 }
 
-func (s *Store[R]) Transact(ctx context.Context, _ string, _ any, f func(context.Context, R) error) (any, error) {
+func (s *Store[R]) Transact(ctx context.Context, action store.Action[R]) (any, error) {
 	ctx = crdb.WithMaxRetries(ctx, s.maxRetries)
-	return nil, crdbpgx.ExecuteTx(ctx, s.Pool, pgx.TxOptions{IsoLevel: pgx.Serializable}, func(tx pgx.Tx) error {
-		return f(ctx, s.newRepo(tx))
+	var result any
+	err := crdbpgx.ExecuteTx(ctx, s.Pool, pgx.TxOptions{IsoLevel: pgx.Serializable}, func(tx pgx.Tx) error {
+		var err error
+		result, err = action.Run(ctx, s.newRepo(tx))
+		return err
 	})
+	return result, err
 }
 
 func (s *Store[R]) Close() error {

@@ -14,6 +14,7 @@ import (
 
 	dsserr "github.com/interuss/dss/pkg/errors"
 	"github.com/interuss/dss/pkg/logging"
+	dssstore "github.com/interuss/dss/pkg/store"
 	"github.com/interuss/stacktrace"
 	"go.uber.org/zap"
 )
@@ -56,7 +57,7 @@ func Init[R any](ctx context.Context, logger *zap.Logger, name string, r MemRepo
 	return store, nil
 }
 
-func (s *Store[R]) Transact(ctx context.Context, requestType string, payload any, _ func(context.Context, R) error) (any, error) {
+func (s *Store[R]) Transact(ctx context.Context, _ dssstore.Action[R]) (any, error) {
 	return nil, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "Transact not implemented for memstore")
 }
 
