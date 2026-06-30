@@ -202,6 +202,32 @@ def implementation_interface(
         lines.extend(indent(body, 1))
 
         lines.append("}")
+        lines.append("")
+
+        # RequestType and IsReadOnly let this Request type double as a store.ActionMetadata, so it
+        # can be used directly as store.ActionAdapter's typed Data with no parallel "Action" type
+        # and no cast. The RequestType string is exported as its own constant (rather than just
+        # inlined in the method body) so other code -- e.g. a raftstore's proposal-dispatch switch,
+        # which needs the string before it has an instance to call a method on -- can reference the
+        # exact same constant instead of duplicating the literal.
+        lines.append(
+            'const {}RequestType = "{}"'.format(
+                operation.interface_name, operation.interface_name
+            )
+        )
+        lines.append("")
+        lines.append(
+            "func (req *{}) RequestType() string {{ return {}RequestType }}".format(
+                operation.request_type_name, operation.interface_name
+            )
+        )
+        lines.append("")
+        lines.append(
+            "func (req *{}) IsReadOnly() bool {{ return {} }}".format(
+                operation.request_type_name,
+                "true" if _is_read_only(operation.operation_id) else "false",
+            )
+        )
 
         # Declare response type for operation
         lines.append("type {} struct {{".format(operation.response_type_name))
@@ -263,6 +289,17 @@ def implementation_interface(
 
     lines.append("}")
     return lines
+
+
+# Operations whose ID starts with one of these (case-insensitive) are read-only. This is more
+# reliable than the HTTP verb: several read operations (e.g. querySubscriptions) are POST because
+# they need a request body, even though they have no side effects.
+_READ_ONLY_OPERATION_ID_PREFIXES = ("get", "query", "search", "list")
+
+
+def _is_read_only(operation_id: str) -> bool:
+    op_id = operation_id.lower()
+    return any(op_id.startswith(prefix) for prefix in _READ_ONLY_OPERATION_ID_PREFIXES)
 
 
 def routes(

@@ -9,7 +9,13 @@ import (
 
 // Action represents a set of operations to be performed on a Repo type R.
 type Action[R any] interface {
+	ActionMetadata
 	Execute(ctx context.Context, r R) (any, error)
+	// Payload is the serializable representation of the Action.
+	Payload() any
+}
+
+type ActionMetadata interface {
 	RequestType() string
 	IsReadOnly() bool
 }
@@ -26,6 +32,21 @@ type Store[R any] interface {
 	Transact(ctx context.Context, action Action[R]) (any, error)
 }
 
+type ActionAdapter[R any, T ActionMetadata] struct {
+	Data T
+	Run  func(ctx context.Context, r R, data T) (any, error)
+}
+
+func (b *ActionAdapter[R, T]) RequestType() string { return b.Data.RequestType() }
+
+func (b *ActionAdapter[R, T]) IsReadOnly() bool { return b.Data.IsReadOnly() }
+
+func (b *ActionAdapter[R, T]) Payload() any { return b.Data }
+
+func (b *ActionAdapter[R, T]) Execute(ctx context.Context, r R) (any, error) {
+	return b.Run(ctx, r, b.Data)
+}
+
 // TODO: This is a placeholder struct that needs to be removed once all handlers are converted into Actions
 type ActionFunction[R any] struct {
 	f func(context.Context, R) error
@@ -38,6 +59,8 @@ func NewActionFunction[R any](f func(context.Context, R) error) *ActionFunction[
 func (a *ActionFunction[R]) RequestType() string { return "" }
 
 func (a *ActionFunction[R]) IsReadOnly() bool { return false }
+
+func (a *ActionFunction[R]) Payload() any { return nil }
 
 func (a *ActionFunction[R]) Execute(ctx context.Context, r R) (any, error) {
 	return nil, a.f(ctx, r)

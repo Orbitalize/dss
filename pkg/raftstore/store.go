@@ -20,7 +20,6 @@ type RaftRepo[R any] interface {
 	Apply(ctx context.Context, proposal consensus.Proposal) (any, error)
 	GetSnapshot() ([]byte, error)
 	RestoreFromSnapshot(data []byte) error
-	IsReadOnly(requestType RequestType) bool
 }
 
 type Store[R any] struct {
@@ -33,7 +32,7 @@ type Store[R any] struct {
 	Consensus *consensus.Consensus
 }
 
-func Init[R any](ctx context.Context, logger *zap.Logger, params raftparams.ConnectParameters, r RaftRepo[R]) (*Store[R], error) {
+func Init[R any](ctx context.Context, logger *zap.Logger, locality string, params raftparams.ConnectParameters, r RaftRepo[R]) (*Store[R], error) {
 	ctx, cancel := context.WithCancel(ctx)
 
 	store := &Store[R]{
@@ -44,7 +43,7 @@ func Init[R any](ctx context.Context, logger *zap.Logger, params raftparams.Conn
 	commitC := make(chan consensus.EntryCommit)
 	go store.processCommits(ctx, commitC)
 
-	consensusInstance, err := consensus.NewConsensus(ctx, logger, params, func() ([]byte, error) { return nil, nil }, commitC)
+	consensusInstance, err := consensus.NewConsensus(ctx, logger, locality, params, r.GetSnapshot, commitC)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "failed to initialize consensus")
 	}
@@ -57,7 +56,7 @@ func Init[R any](ctx context.Context, logger *zap.Logger, params raftparams.Conn
 // Transact passes the action to the consensus layer and blocks until it is committed and applied.
 // The processCommits loop will call Apply on the proposal when it is committed.
 func (s *Store[R]) Transact(ctx context.Context, action store.Action[R]) (any, error) {
-	return s.Consensus.HandleClientRequest(ctx, action.RequestType(), action, action.IsReadOnly())
+	return s.Consensus.HandleClientRequest(ctx, action.RequestType(), action.Payload(), action.IsReadOnly())
 }
 
 func (s *Store[R]) Interact(_ context.Context) (R, error) {

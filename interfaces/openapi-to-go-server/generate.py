@@ -38,7 +38,6 @@ def _parse_args():
         default=None,
         help="Folder that will hold the generated output for an example entrypoint and implementations",
     )
-
     # General generation options
     parser.add_argument(
         "--api_import",

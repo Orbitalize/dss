@@ -21,6 +21,7 @@ type EntryCommit struct {
 type Proposal struct {
 	ID          string    `json:"id"`
 	NodeID      uint64    `json:"node_id"`
+	Locality    string    `json:"locality"`
 	Timestamp   time.Time `json:"timestamp"`
 	RequestType string    `json:"request_type"`
 	Value       []byte    `json:"value"`
@@ -45,6 +46,7 @@ func (c *Consensus) newProposal(ctx context.Context, requestType string, payload
 	return Proposal{
 		ID:          uuid.NewString(),
 		NodeID:      c.nodeID,
+		Locality:    c.locality,
 		Timestamp:   timestamp,
 		RequestType: requestType,
 		Value:       value,

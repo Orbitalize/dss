@@ -21,10 +21,10 @@ import (
 	apiversioningv1 "github.com/interuss/dss/pkg/api/versioningv1"
 	"github.com/interuss/dss/pkg/auth"
 	aux "github.com/interuss/dss/pkg/aux_"
+	auxactions "github.com/interuss/dss/pkg/aux_/actions"
 	auxs "github.com/interuss/dss/pkg/aux_/store"
 	"github.com/interuss/dss/pkg/build"
 	"github.com/interuss/dss/pkg/logging"
-	"github.com/interuss/dss/pkg/rid/application"
 	rid_v1 "github.com/interuss/dss/pkg/rid/server/v1"
 	rid_v2 "github.com/interuss/dss/pkg/rid/server/v2"
 	rids "github.com/interuss/dss/pkg/rid/store"
@@ -90,7 +90,7 @@ func createKeyResolver() (auth.KeyResolver, error) {
 }
 
 func createAuxServer(ctx context.Context, locality string, publicEndpoint string, opts params.Options, logger *zap.Logger) (*aux.Server, error) {
-	auxStore, err := auxs.Init(ctx, logger, true)
+	auxStore, err := auxs.Init(ctx, logger, locality, true)
 	if err != nil {
 		return nil, err
 	}
@@ -106,12 +106,12 @@ func createAuxServer(ctx context.Context, locality string, publicEndpoint string
 		return nil, stacktrace.Propagate(err, "Unable to store current metadata")
 	}
 
-	return &aux.Server{Store: auxStore, Locality: locality, Options: opts}, nil
+	return &aux.Server{Store: auxStore, Locality: locality, Options: opts, Implementation: auxactions.Implementation{}}, nil
 }
 
 func createRIDServers(ctx context.Context, locality string, logger *zap.Logger) (*rid_v1.Server, *rid_v2.Server, error) {
 
-	ridStore, err := rids.Init(ctx, logger, true)
+	ridStore, err := rids.Init(ctx, logger, locality, true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -129,21 +129,20 @@ func createRIDServers(ctx context.Context, locality string, logger *zap.Logger) 
 		}
 	}
 
-	app := application.NewFromTransactor(ridStore, logger)
 	return &rid_v1.Server{
-			App:               app,
+			Store:             ridStore,
 			Locality:          locality,
 			AllowHTTPBaseUrls: *allowHTTPBaseUrls,
 		}, &rid_v2.Server{
-			App:               app,
+			Store:             ridStore,
 			Locality:          locality,
 			AllowHTTPBaseUrls: *allowHTTPBaseUrls,
 		}, nil
 }
 
-func createSCDServer(ctx context.Context, logger *zap.Logger) (*scd.Server, error) {
+func createSCDServer(ctx context.Context, logger *zap.Logger, locality string) (*scd.Server, error) {
 
-	scdStore, err := scds.Init(ctx, logger, true)
+	scdStore, err := scds.Init(ctx, logger, locality, true)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +326,7 @@ func RunHTTPServer(ctx context.Context, ctxCanceler func(), address, locality st
 
 	// Initialize strategic conflict detection
 	if *enableSCD {
-		scdV1Server, err = createSCDServer(ctx, logger)
+		scdV1Server, err = createSCDServer(ctx, logger, locality)
 		if err != nil {
 			return stacktrace.Propagate(err, "Failed to create strategic conflict detection server")
 		}
