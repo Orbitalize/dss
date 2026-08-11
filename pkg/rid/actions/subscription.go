@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+	"encoding/json"
 
 	ridv1 "github.com/interuss/dss/pkg/api/ridv1"
 	ridv2 "github.com/interuss/dss/pkg/api/ridv2"
@@ -14,11 +15,35 @@ import (
 
 func init() {
 	Registry[ridv1.DeleteSubscriptionOperationID] = dssstore.OperationHandler[repos.Repository]{
+		Encode:  EncodeRequest,
+		Decode:  DecodeV1DeleteSubscription,
 		Execute: ExecuteDeleteSubscription,
 	}
 	Registry[ridv2.DeleteSubscriptionOperationID] = dssstore.OperationHandler[repos.Repository]{
+		Encode:  EncodeRequest,
+		Decode:  DecodeV2DeleteSubscription,
 		Execute: ExecuteDeleteSubscription,
 	}
+}
+
+func EncodeRequest(request dssstore.OperationRequest) ([]byte, error) {
+	return json.Marshal(request)
+}
+
+func DecodeV1DeleteSubscription(buf []byte) (dssstore.OperationRequest, error) {
+	var req ridv1.DeleteSubscriptionRequest
+	if err := json.Unmarshal(buf, &req); err != nil {
+		return nil, stacktrace.Propagate(err, "failed to unmarshal %s payload", ridv1.DeleteSubscriptionOperationID)
+	}
+	return &req, nil
+}
+
+func DecodeV2DeleteSubscription(buf []byte) (dssstore.OperationRequest, error) {
+	var req ridv2.DeleteSubscriptionRequest
+	if err := json.Unmarshal(buf, &req); err != nil {
+		return nil, stacktrace.Propagate(err, "failed to unmarshal %s payload", ridv2.DeleteSubscriptionOperationID)
+	}
+	return &req, nil
 }
 
 func ExecuteDeleteSubscription(ctx context.Context, repo repos.Repository, request dssstore.OperationRequest) (any, error) {
