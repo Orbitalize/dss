@@ -99,6 +99,7 @@ for name in "${CLUSTERS[@]}"; do
                 --scd-auth1   "DummyOAuth($OAUTH_URL_IN_NET,sub=fake_uss)" \
                 --scd-auth2   "DummyOAuth($OAUTH_URL_IN_NET,sub=fake_uss2)" \
                 --scd-api-version 1.0.0 \
+                --scd-time-based-notification-index true \
             >"$log" 2>&1; then
         printf '    %s✓%s  prober ok in %s\n' "$GREEN" "$RESET" "$(fmt_dur "$(( $(date +%s) - start_ts ))")"
     else

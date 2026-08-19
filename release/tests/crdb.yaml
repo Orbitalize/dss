@@ -44,6 +44,7 @@ v1:
           test_exclusions: test_exclusions
     execution:
       stop_fast: false
+      do_not_stop_fast_for_acceptable_findings: true
   artifacts:
     output_path: output/pooled_dss_probing
     raw_report: { }
@@ -65,6 +66,47 @@ v1:
         participant_requirements:
           uss1: all_astm_dss_requirements
           uss2: all_astm_dss_requirements
+        acceptable_findings:
+          - scenario_type: scenarios.astm.utm.dss.SubscriptionSimple
+            test_case_name: Subscription Simple
+            test_step_name: Create subscription validation
+            check_name: New subscription has a notification index of 0
+          - scenario_type: scenarios.astm.utm.dss.SubscriptionSimple
+            test_case_name: Subscription Simple
+            test_step_name: Create subscription validation
+            check_name: Create subscription response content is correct
+          - scenario_type: scenarios.astm.utm.dss.synchronization.SubscriptionSynchronization
+            test_case_name: Subscription Synchronization
+            test_step_name: Create subscription validation
+            check_name: New subscription has a notification index of 0
+          - scenario_type: scenarios.astm.utm.dss.synchronization.SubscriptionSynchronization
+            test_case_name: Subscription Synchronization
+            test_step_name: Create subscription validation
+            check_name: Create subscription response content is correct
+          - scenario_type: scenarios.astm.netrid.v19.dss.ISASubscriptionInteractions
+            test_case_name: ISA Subscription Interactions
+            test_step_name: New Subscription within ISA
+            check_name: Newly created subscription has a notification_index of 0
+          - scenario_type: scenarios.astm.netrid.v19.dss.ISASubscriptionInteractions
+            test_case_name: ISA Subscription Interactions
+            test_step_name: New subscription within ISA is mutated to ISA boundary
+            check_name: Mutated subscription has a notification_index of 0
+          - scenario_type: scenarios.astm.netrid.v19.dss.SubscriptionSimple
+            test_case_name: Subscription Simple
+            test_step_name: Create subscription validation
+            check_name: Returned notification index is 0 if present
+          - scenario_type: scenarios.astm.netrid.v22a.dss.ISASubscriptionInteractions
+            test_case_name: ISA Subscription Interactions
+            test_step_name: New Subscription within ISA
+            check_name: Newly created subscription has a notification_index of 0
+          - scenario_type: scenarios.astm.netrid.v22a.dss.ISASubscriptionInteractions
+            test_case_name: ISA Subscription Interactions
+            test_step_name: New subscription within ISA is mutated to ISA boundary
+            check_name: Mutated subscription has a notification_index of 0
+          - scenario_type: scenarios.astm.netrid.v22a.dss.SubscriptionSimple
+            test_case_name: Subscription Simple
+            test_step_name: Create subscription validation
+            check_name: Returned notification index is 0 if present
   validation:
     criteria:
       - $ref: ../dev/library/validation.yaml#/execution_error_none
