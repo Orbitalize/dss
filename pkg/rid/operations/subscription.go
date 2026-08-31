@@ -2,11 +2,14 @@ package operations
 
 import (
 	"context"
+	"errors"
 
 	ridv1 "github.com/interuss/dss/pkg/api/ridv1"
 	ridv2 "github.com/interuss/dss/pkg/api/ridv2"
 	dsserr "github.com/interuss/dss/pkg/errors"
+	"github.com/interuss/dss/pkg/geo"
 	dssmodels "github.com/interuss/dss/pkg/models"
+	common "github.com/interuss/dss/pkg/rid/models/api/common"
 	"github.com/interuss/dss/pkg/rid/repos"
 	dssstore "github.com/interuss/dss/pkg/store"
 	"github.com/interuss/stacktrace"
@@ -22,6 +25,18 @@ func init() {
 		Encode:  dssstore.EncodeJSON,
 		Decode:  dssstore.DecodeJSON[*ridv2.DeleteSubscriptionRequest],
 		Execute: ExecuteDeleteSubscription,
+	}
+	Registry[ridv1.SearchSubscriptionsOperationID] = dssstore.OperationHandler[repos.Repository]{
+		Encode:     dssstore.EncodeJSON,
+		Decode:     dssstore.DecodeJSON[*ridv1.SearchSubscriptionsRequest],
+		Execute:    ExecuteSearchSubscriptions,
+		IsReadOnly: true,
+	}
+	Registry[ridv2.SearchSubscriptionsOperationID] = dssstore.OperationHandler[repos.Repository]{
+		Encode:     dssstore.EncodeJSON,
+		Decode:     dssstore.DecodeJSON[*ridv2.SearchSubscriptionsRequest],
+		Execute:    ExecuteSearchSubscriptions,
+		IsReadOnly: true,
 	}
 }
 
@@ -72,4 +87,48 @@ func ExecuteDeleteSubscription(ctx context.Context, repo repos.Repository, reque
 		return nil, stacktrace.Propagate(err, "Error deleting Subscription from repo")
 	}
 	return ret, nil
+}
+
+func ExecuteSearchSubscriptions(ctx context.Context, repo repos.Repository, request dssstore.OperationRequest) (any, error) {
+	var (
+		rawArea  string
+		clientID *string
+	)
+
+	switch req := request.(type) {
+	case *ridv1.SearchSubscriptionsRequest:
+		if req.Area == nil {
+			return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Missing area")
+		}
+		rawArea, clientID = string(*req.Area), req.Auth.ClientID
+	case *ridv2.SearchSubscriptionsRequest:
+		if req.Area == nil {
+			return nil, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Missing area")
+		}
+		rawArea, clientID = string(*req.Area), req.Auth.ClientID
+	default:
+		return nil, stacktrace.NewError("unexpected request type %T for operation %q", request, ridv2.SearchSubscriptionsOperationID)
+	}
+
+	if clientID == nil {
+		return nil, stacktrace.NewErrorWithCode(dsserr.PermissionDenied, "Missing owner")
+	}
+
+	area, err := common.FromGeoPolygonString(rawArea)
+	if err != nil {
+		return nil, stacktrace.PropagateWithCode(err, dsserr.BadRequest, "Invalid area")
+	}
+
+	cells, err := area.CalculateCovering()
+	if errors.Is(err, geo.ErrAreaTooLarge) {
+		return nil, stacktrace.PropagateWithCode(err, dsserr.AreaTooLarge, "Requested area is too large")
+	} else if err != nil {
+		return nil, stacktrace.PropagateWithCode(err, dsserr.BadRequest, "Invalid area")
+	}
+
+	subscriptions, err := repo.SearchSubscriptionsByOwner(ctx, cells, dssmodels.Owner(*clientID))
+	if err != nil {
+		return nil, stacktrace.Propagate(err, "Error searching Subscriptions from repo")
+	}
+	return subscriptions, nil
 }

@@ -6,14 +6,12 @@ import (
 	"github.com/interuss/dss/pkg/api"
 	restapi "github.com/interuss/dss/pkg/api/ridv2"
 	dsserr "github.com/interuss/dss/pkg/errors"
-	"github.com/interuss/dss/pkg/geo"
 	dssmodels "github.com/interuss/dss/pkg/models"
 	ridmodels "github.com/interuss/dss/pkg/rid/models"
 	apiv2 "github.com/interuss/dss/pkg/rid/models/api/v2"
 	"github.com/interuss/dss/pkg/rid/repos"
 	store "github.com/interuss/dss/pkg/store"
 	"github.com/interuss/stacktrace"
-	"github.com/pkg/errors"
 )
 
 // DeleteSubscription deletes an existing subscription.
@@ -53,38 +51,21 @@ func (s *Server) DeleteSubscription(ctx context.Context, req *restapi.DeleteSubs
 func (s *Server) SearchSubscriptions(ctx context.Context, req *restapi.SearchSubscriptionsRequest,
 ) restapi.SearchSubscriptionsResponseSet {
 
-	if req.Auth.ClientID == nil {
-		return restapi.SearchSubscriptionsResponseSet{Response403: &restapi.ErrorResponse{
-			Message: dsserr.Handle(ctx, stacktrace.NewErrorWithCode(dsserr.PermissionDenied, "Missing owner"))}}
-	}
-
-	if req.Area == nil {
-		return restapi.SearchSubscriptionsResponseSet{Response400: &restapi.ErrorResponse{
-			Message: dsserr.Handle(ctx, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Missing area"))}}
-	}
-	p, err := apiv2.FromGeoPolygonString(*req.Area)
-	if err != nil {
-		return restapi.SearchSubscriptionsResponseSet{Response400: &restapi.ErrorResponse{
-			Message: dsserr.Handle(ctx, stacktrace.PropagateWithCode(err, dsserr.BadRequest, "Invalid area"))}}
-	}
-	cu, err := p.CalculateCovering()
-	if errors.Is(err, geo.ErrAreaTooLarge) {
-		return restapi.SearchSubscriptionsResponseSet{Response413: &restapi.ErrorResponse{
-			Message: dsserr.Handle(ctx, stacktrace.Propagate(err, "Requested area is too large"))}}
-	} else if err != nil {
-		return restapi.SearchSubscriptionsResponseSet{Response400: &restapi.ErrorResponse{
-			Message: dsserr.Handle(ctx, stacktrace.PropagateWithCode(err, dsserr.BadRequest, "Invalid area"))}}
-	}
-
-	subscriptions, err := s.App.SearchSubscriptionsByOwner(ctx, cu, dssmodels.Owner(*req.Auth.ClientID))
+	subscriptions, err := store.TransactWithResult[repos.Repository, []*ridmodels.Subscription](ctx, s.Store, req)
 	if err != nil {
 		err = stacktrace.Propagate(err, "Could not search Subscriptions")
-		if stacktrace.GetCode(err) == dsserr.BadRequest {
-			return restapi.SearchSubscriptionsResponseSet{Response400: &restapi.ErrorResponse{
-				Message: dsserr.Handle(ctx, err)}}
+		errResp := &restapi.ErrorResponse{Message: dsserr.Handle(ctx, err)}
+		switch stacktrace.GetCode(err) {
+		case dsserr.PermissionDenied:
+			return restapi.SearchSubscriptionsResponseSet{Response403: errResp}
+		case dsserr.BadRequest:
+			return restapi.SearchSubscriptionsResponseSet{Response400: errResp}
+		case dsserr.AreaTooLarge:
+			return restapi.SearchSubscriptionsResponseSet{Response413: errResp}
+		default:
+			return restapi.SearchSubscriptionsResponseSet{Response500: &api.InternalServerErrorBody{
+				ErrorMessage: *dsserr.Handle(ctx, stacktrace.Propagate(err, "Got an unexpected error"))}}
 		}
-		return restapi.SearchSubscriptionsResponseSet{Response500: &api.InternalServerErrorBody{
-			ErrorMessage: *dsserr.Handle(ctx, stacktrace.Propagate(err, "Got an unexpected error"))}}
 	}
 
 	sp := make([]restapi.Subscription, 0, len(subscriptions))

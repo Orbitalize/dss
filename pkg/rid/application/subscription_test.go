@@ -216,7 +216,9 @@ func TestSubscriptionUpdateCells(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, sub)
 
-	subs, err := app.SearchSubscriptionsByOwner(ctx, sub.Cells, owner)
+	repo, err := app.store.Interact(ctx)
+	require.NoError(t, err)
+	subs, err := repo.SearchSubscriptionsByOwner(ctx, sub.Cells, owner)
 	require.NoError(t, err)
 	require.NotNil(t, subs)
 	require.Len(t, subs, 1)

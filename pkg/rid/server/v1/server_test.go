@@ -84,13 +84,6 @@ func (ms *mockStore) Close() error {
 	return args.Error(0)
 }
 
-func (ma *mockApp) SearchSubscriptionsByOwner(ctx context.Context, cells s2.CellUnion, owner dssmodels.Owner) ([]*ridmodels.Subscription, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	args := ma.Called(ctx, cells, owner)
-	return args.Get(0).([]*ridmodels.Subscription), args.Error(1)
-}
-
 func (ma *mockApp) GetISA(ctx context.Context, id dssmodels.ID) (*ridmodels.IdentificationServiceArea, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -368,50 +361,17 @@ func TestGetSubscription(t *testing.T) {
 	}
 }
 
-func TestSearchSubscriptionsFailsIfOwnerMissingFromContext(t *testing.T) {
-	var (
-		ma = &mockApp{}
-		s  = &Server{
-			App: ma,
-		}
-	)
-
-	respSet := s.SearchSubscriptions(context.Background(), &restapi.SearchSubscriptionsRequest{
-		Area: (*restapi.GeoPolygonString)(&testdata.Loop),
-	})
-
-	require.NotNil(t, respSet.Response403)
-	require.True(t, ma.AssertExpectations(t))
-}
-
-func TestSearchSubscriptionsFailsForInvalidArea(t *testing.T) {
-	var (
-		ma = &mockApp{}
-		s  = &Server{
-			App: ma,
-		}
-	)
-
-	respSet := s.SearchSubscriptions(context.Background(), &restapi.SearchSubscriptionsRequest{
-		Area: (*restapi.GeoPolygonString)(&testdata.LoopWithOddNumberOfCoordinates),
-		Auth: api.AuthorizationResult{ClientID: &testdata.Owner},
-	})
-
-	require.NotNil(t, respSet.Response400)
-	require.True(t, ma.AssertExpectations(t))
-}
-
 func TestSearchSubscriptions(t *testing.T) {
 	var (
-		ma = &mockApp{}
+		ms = &mockStore{}
 		s  = &Server{
-			App: ma,
+			Store: ms,
 		}
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	ma.On("SearchSubscriptionsByOwner", mock.Anything, mock.Anything, dssmodels.Owner(testdata.Owner)).Return(
+	ms.On("Transact", mock.Anything, mock.Anything).Return(
 		[]*ridmodels.Subscription{
 			{
 				ID:                dssmodels.ID(uuid.New().String()),
@@ -428,7 +388,7 @@ func TestSearchSubscriptions(t *testing.T) {
 
 	require.NotNil(t, respSet.Response200)
 	require.Len(t, respSet.Response200.Subscriptions, 1)
-	require.True(t, ma.AssertExpectations(t))
+	require.True(t, ms.AssertExpectations(t))
 }
 
 func TestCreateISA(t *testing.T) {

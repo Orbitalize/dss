@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 
-	"github.com/golang/geo/s2"
 	dsserr "github.com/interuss/dss/pkg/errors"
 	dssmodels "github.com/interuss/dss/pkg/models"
 	ridmodels "github.com/interuss/dss/pkg/rid/models"
@@ -30,9 +29,6 @@ type SubscriptionApp interface {
 
 	// UpdateSubscription
 	UpdateSubscription(ctx context.Context, s *ridmodels.Subscription) (*ridmodels.Subscription, error)
-
-	// SearchSubscriptionsByOwner returns all IdentificationServiceAreas ownded by "owner" in "cells".
-	SearchSubscriptionsByOwner(ctx context.Context, cells s2.CellUnion, owner dssmodels.Owner) ([]*ridmodels.Subscription, error)
 }
 
 func (a *app) GetSubscription(ctx context.Context, id dssmodels.ID) (*ridmodels.Subscription, error) {
@@ -41,14 +37,6 @@ func (a *app) GetSubscription(ctx context.Context, id dssmodels.ID) (*ridmodels.
 		return nil, stacktrace.Propagate(err, "Unable to interact with store")
 	}
 	return repo.GetSubscription(ctx, id)
-}
-
-func (a *app) SearchSubscriptionsByOwner(ctx context.Context, cells s2.CellUnion, owner dssmodels.Owner) ([]*ridmodels.Subscription, error) {
-	repo, err := a.store.Interact(ctx)
-	if err != nil {
-		return nil, stacktrace.Propagate(err, "Unable to interact with store")
-	}
-	return repo.SearchSubscriptionsByOwner(ctx, cells, owner)
 }
 
 func (a *app) InsertSubscription(ctx context.Context, s *ridmodels.Subscription) (*ridmodels.Subscription, error) {
