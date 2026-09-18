@@ -176,6 +176,21 @@ func (vol4 *Volume4D) CalculateSpatialCovering() (s2.CellUnion, error) {
 	return vol4.SpatialVolume.CalculateCovering()
 }
 
+// CellsFromVolumes returns the S2 covering of the union of the given volumes' footprints
+func CellsFromVolumes(volumes ...*Volume4D) (s2.CellUnion, error) {
+	union, err := UnionVolumes4D(volumes...)
+	if err != nil {
+		return nil, stacktrace.Propagate(err, "failed to union volumes")
+	}
+
+	covering, err := union.CalculateSpatialCovering()
+	if err != nil {
+		return nil, stacktrace.Propagate(err, "failed to calculate spatial covering")
+	}
+
+	return covering, nil
+}
+
 // CalculateCovering returns the spatial covering of vol3, or one of:
 // * geo.ErrMissingFootprint
 // * geo.ErrNotEnoughPointsInPolygon
