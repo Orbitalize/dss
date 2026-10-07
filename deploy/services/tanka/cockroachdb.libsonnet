@@ -55,25 +55,8 @@ local volumes = import 'volumes.libsonnet';
                 value: 'kubernetes-multiregion',
               },
             ],
-            livenessProbe: {
-              httpGet: {
-                path: '/health',
-                port: 'http',
-                scheme: 'HTTPS',
-              },
-              initialDelaySeconds: 30,
-              periodSeconds: 5,
-            },
-            readinessProbe: {
-              httpGet: {
-                path: '/health?ready=1',
-                port: 'http',
-                scheme: 'HTTPS',
-              },
-              initialDelaySeconds: 10,
-              periodSeconds: 5,
-              failureThreshold: 2,
-            },
+            [if metadata.cockroach.livenessProbe != null then 'livenessProbe']: metadata.cockroach.livenessProbe,
+            readinessProbe: metadata.cockroach.readinessProbe,
             command: [
               '/bin/bash',
               '-ecx',

@@ -25,6 +25,19 @@
     JoinExisting: [],
     storageClass: 'standard',
     clusterName: '',
+    // CockroachDB does not recommend using a liveness probe in production
+    // See https://github.com/interuss/dss/issues/1732
+    livenessProbe: null,
+    readinessProbe: {
+      httpGet: {
+        path: '/health?ready=1',
+        port: 'http',
+        scheme: 'HTTPS',
+      },
+      initialDelaySeconds: 10,
+      periodSeconds: 5,
+      failureThreshold: 2,
+    },
   },
   yugabyte: {
     image: error 'must specify yugabyte db image',
