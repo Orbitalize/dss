@@ -25,6 +25,9 @@ local metadata = metadataBase {
     JoinExisting: [${VAR_CRDB_EXTERNAL_NODES}],
     storageClass: '${VAR_STORAGE_CLASS}',
     clusterName: '${VAR_CRDB_CLUSTER_NAME}',
+    livenessProbe: ${VAR_CRDB_LIVENESS_PROBE},
+    // When null, the default readiness probe of metadata_base.libsonnet is used.
+    [if ${VAR_CRDB_READINESS_PROBE} != null then 'readinessProbe']: ${VAR_CRDB_READINESS_PROBE},
   },
   yugabyte+: {
     image: '${VAR_YUGABYTE_DOCKER_IMAGE_NAME}',

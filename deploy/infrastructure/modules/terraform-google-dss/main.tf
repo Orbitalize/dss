@@ -25,6 +25,8 @@ module "terraform-commons-dss" {
   app_hostname                         = var.app_hostname
   crdb_image_tag                       = var.crdb_image_tag
   crdb_cluster_name                    = var.crdb_cluster_name
+  crdb_liveness_probe                  = var.crdb_liveness_probe
+  crdb_readiness_probe                 = var.crdb_readiness_probe
   db_hostname_suffix                   = var.db_hostname_suffix
   datastore_type                       = var.datastore_type
   datastore_max_open_conns             = var.datastore_max_open_conns

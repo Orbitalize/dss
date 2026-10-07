@@ -48,6 +48,8 @@ COMMONS_DSS_VARIABLES = GLOBAL_VARIABLES + [
     "desired_aux_db_version",
     "crdb_image_tag",
     "crdb_cluster_name",
+    "crdb_liveness_probe",
+    "crdb_readiness_probe",
     "locality",
     "datastore_max_open_conns",
     "crdb_external_nodes",
