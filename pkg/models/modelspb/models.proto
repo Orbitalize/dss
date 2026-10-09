@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dss.models;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/interuss/dss/pkg/models/modelspb";
+
+// CellUnion is a delta-encoded list of S2 cell IDs:
+// cells[0] = first_cell, cells[i] = cells[i-1] + (deltas[i-1] << delta_shift).
+message CellUnion {
+  fixed64 first_cell = 1;
+  uint32 delta_shift = 2;
+  repeated sint64 deltas = 3;
+}
+
+message CellsVolume4D {
+  CellUnion cells = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  optional float altitude_lo = 4;
+  optional float altitude_hi = 5;
+}
