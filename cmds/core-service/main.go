@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/profiler"
+	"github.com/interuss/dss/pkg/admin"
 	"github.com/interuss/dss/pkg/api"
 	apiauxv1 "github.com/interuss/dss/pkg/api/auxv1"
 	apiridv1 "github.com/interuss/dss/pkg/api/ridv1"
@@ -25,6 +28,7 @@ import (
 	"github.com/interuss/dss/pkg/build"
 	dsserr "github.com/interuss/dss/pkg/errors"
 	"github.com/interuss/dss/pkg/logging"
+	"github.com/interuss/dss/pkg/raftstore"
 	rid_v1 "github.com/interuss/dss/pkg/rid/server/v1"
 	rid_v2 "github.com/interuss/dss/pkg/rid/server/v2"
 	rids "github.com/interuss/dss/pkg/rid/store"
@@ -59,6 +63,7 @@ var (
 	enableMetrics           = flag.Bool("enable_metrics", false, "Enable metric endpoint")
 	enableTracing           = flag.Bool("enable_tracing", false, "Enable tracing")
 	metricsListeningAddress = flag.String("metrics_addr", ":8079", "Address and port that the for the prometheus-compatible metric service binds to and listens on for incoming connections")
+	adminAddress            = flag.String("admin_addr", ":8078", "Address and port that the admin API (used by dssctl) binds to and listens on for incoming connections. TODO: The API is not authenticated yet.")
 
 	pkFile                  = flag.String("public_key_files", "", "Path to public Keys to use for JWT decoding, separated by commas.")
 	jwksEndpoint            = flag.String("jwks_endpoint", "", "URL pointing to an endpoint serving JWKS")
@@ -359,6 +364,20 @@ func RunHTTPServer(ctx context.Context, ctxCanceler func(), address, locality st
 		multiRouter.Routers = append(multiRouter.Routers, &scdV1Router)
 	}
 
+	stores := map[string]any{"aux": auxV1Server.Store, "rid": ridV1Server.Store}
+	if scdV1Server != nil {
+		stores["scd"] = scdV1Server.Store
+	}
+	adminServer, err := startAdminServer(logger, stores)
+	if err != nil {
+		return stacktrace.Propagate(err, "Failed to start admin server")
+	}
+	defer func() {
+		if err := adminServer.Shutdown(context.Background()); err != nil {
+			logger.Warn("failed to shut down admin server", zap.Error(err))
+		}
+	}()
+
 	// the middlewares are wrapped and, therefore, executed in the opposite order
 	handler := healthyEndpointMiddleware(logger, &multiRouter)
 	handler = authorizer.TokenMiddleware(handler)
@@ -419,6 +438,39 @@ func RunHTTPServer(ctx context.Context, ctxCanceler func(), address, locality st
 
 	logger.Info("Starting DSS HTTP server")
 	return httpServer.ListenAndServe()
+}
+
+// startAdminServer starts serving the admin API, used by dssctl, of the stores indexed by their name.
+func startAdminServer(logger *zap.Logger, stores map[string]any) (*http.Server, error) {
+	logger = logger.With(zap.String("component", "admin"), zap.String("address", *adminAddress))
+	mux := http.NewServeMux()
+
+	for name, store := range stores {
+		// Only the stores backed by a Raft group can have their membership managed.
+		if group, ok := store.(admin.RaftGroup); ok {
+			raftstore.RegisterAdminHandlers(mux, logger, name, group)
+		}
+	}
+
+	// Listen synchronously so that an unavailable address is reported at startup.
+	listener, err := net.Listen("tcp", *adminAddress)
+	if err != nil {
+		return nil, stacktrace.Propagate(err, "Failed to listen on %s", *adminAddress)
+	}
+
+	server := &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: 15 * time.Second,
+	}
+
+	go func() {
+		logger.Info("Starting admin server")
+		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("admin server failed", zap.Error(err))
+		}
+	}()
+
+	return server, nil
 }
 
 // healthyEndpointMiddleware intercepts a request and responds with an "ok" message at the endpoint "/healthy".

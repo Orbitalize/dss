@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -527,6 +528,34 @@ func (c *Consensus) AddNode(ctx context.Context, nodeID uint64, peerURL string) 
 // It blocks until the change is applied or ctx is cancelled.
 func (c *Consensus) RemoveNode(ctx context.Context, nodeID uint64) error {
 	return c.proposeConfChange(ctx, raftpb.ConfChangeSingle{Type: raftpb.ConfChangeRemoveNode, NodeID: nodeID}, "")
+}
+
+// MembershipStatus describes the membership of the Raft group as known by a node.
+type MembershipStatus struct {
+	// NodeID is the ID of the node reporting the status.
+	NodeID uint64
+	// LeaderID is the ID of the current leader, raft.None if unknown.
+	LeaderID uint64
+	Voters   []uint64
+	// Members maps the ID of every member of the group to its peer URL.
+	Members    map[uint64]string
+	RemovedIDs []uint64
+}
+
+// MembershipStatus returns the membership of the Raft group as currently known by this node.
+func (c *Consensus) MembershipStatus() MembershipStatus {
+	leaderID := c.node.Status().Lead
+
+	c.membership.RLock()
+	defer c.membership.RUnlock()
+
+	return MembershipStatus{
+		NodeID:     c.nodeID,
+		LeaderID:   leaderID,
+		Voters:     slices.Clone(c.membership.confState.Voters),
+		Members:    maps.Clone(c.membership.members),
+		RemovedIDs: slices.Clone(c.membership.removedIDs),
+	}
 }
 
 // proposeConfChange proposes a single membership change and blocks until it is applied or ctx is cancelled.

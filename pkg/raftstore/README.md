@@ -45,11 +45,13 @@ Most of the concepts defined below come from the Raft consensus algorithm itself
 
 ## Membership
 
-The members of a Raft group are bootstrapped from the `--{aux,rid,scd}_raft_peers` flags on the group's very first start. Afterwards, nodes are added to and removed from a running group one at a time with [`Consensus.AddNode` and `Consensus.RemoveNode`](consensus/membership.go), which propose a configuration change through the Raft log and block until it is applied. Each Raft group is managed independently: a DSS node is added to or removed from each of its groups with one configuration change per group.
+The members of a Raft group are bootstrapped from the `--{aux,rid,scd}_raft_peers` flags on the group's very first start. Afterwards, nodes are added to and removed from a running group one at a time with [`Consensus.AddNode` and `Consensus.RemoveNode`](consensus/consensus.go), which propose a configuration change through the Raft log and block until it is applied. Each Raft group is managed independently: a DSS node is added to or removed from each of its groups with one configuration change per group.
+
+- **Admin API:** The core-service serves the [Raft admin API](../admin/api.go) of every raftstore on its admin server (`--admin_addr`, `localhost` by default), under `/raft/{aux,rid,scd}/members`, to list, add and remove members. It is used by [`dssctl raft`](../../cmds/dssctl/raft/raft.go), which sends one request per selected group: a change may succeed for some groups and fail for others, in which case it is retried for the failed groups only. The API is not authenticated: it must only be reachable by the operators of the DSS instance.
 
 - **Joining:** A node joining a running group is started with `--raft_join`, and its peers flags only need its own entry. Once it was added, it learns the configuration and the application state from the leader.
 - **Validation:** A configuration change is validated when it is proposed, to fail fast, and again by every node when it is applied. The latter is authoritative and deterministic and a rejected change is treated as a no-op: it is not applied to the Raft node and does not alter the configuration. The following changes are rejected:
-  - adding a node that is already a member or with an invalid peer UR.
+  - adding a node that is already a member or with an invalid peer URL.
   - removing a node that is not a member, or a voter if the group would be left with fewer than 3 voters.
   - adding or removing a node ID that was previously removed from the group.
 - **Removal:** A node stops when it applies its own removal, or when the remaining members refuse its connections, as the leader may stop replicating to it before it learns about its removal.
