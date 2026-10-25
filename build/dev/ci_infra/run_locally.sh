@@ -52,6 +52,8 @@ if [[ "$DC_COMMAND" == up* ]]; then
                         --gateway=172.27.0.1 \
                         dss_internal_network || true
   docker network create interop_ecosystem_network || true
+  echo "Creating raft certificates..."
+  ./raft_certs.sh "$NUM_USS" "$NUM_NODES"
   echo "Starting containers..."
 fi
 
@@ -64,9 +66,9 @@ if [[ "$DC_COMMAND" == up* ]]; then
       NODE_IDX=$(( (i-1) * NUM_NODES + j ))
       PADDED_NODE_IDX=$(printf "%02d" "$NODE_IDX")
       NODE_IP="172.27.${i}.${j}"
-      RID_RAFT_NODES="${RID_RAFT_NODES},${NODE_IDX}=http://${NODE_IP}:95${PADDED_NODE_IDX}"
-      SCD_RAFT_NODES="${SCD_RAFT_NODES},${NODE_IDX}=http://${NODE_IP}:96${PADDED_NODE_IDX}"
-      AUX_RAFT_NODES="${AUX_RAFT_NODES},${NODE_IDX}=http://${NODE_IP}:97${PADDED_NODE_IDX}"
+      RID_RAFT_NODES="${RID_RAFT_NODES},${NODE_IDX}=https://${NODE_IP}:95${PADDED_NODE_IDX}"
+      SCD_RAFT_NODES="${SCD_RAFT_NODES},${NODE_IDX}=https://${NODE_IP}:96${PADDED_NODE_IDX}"
+      AUX_RAFT_NODES="${AUX_RAFT_NODES},${NODE_IDX}=https://${NODE_IP}:97${PADDED_NODE_IDX}"
     done
   done
   export RID_RAFT_NODES=${RID_RAFT_NODES#,}

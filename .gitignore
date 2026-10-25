@@ -138,3 +138,4 @@ go
 
 # raft
 raft_data/
+build/dev/ci_infra/raft-certs/

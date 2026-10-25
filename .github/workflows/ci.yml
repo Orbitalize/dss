@@ -143,6 +143,9 @@ jobs:
         run: make down-locally
       - name: Start local DSS instance
         run: make start-locally
+      - name: Check mTLS between raft nodes
+        if: matrix.db == 'raft-cluster'
+        run: build/dev/ci_infra/check_raft_mtls.sh
       - name: Probe local DSS instance
         run: make probe-locally
       - name: Run Qualifier against local DSS instance
