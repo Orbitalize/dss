@@ -11,6 +11,7 @@ services:
     cap_add: [ NET_ADMIN ]
     volumes:
       - $PWD/../../test-certs:/var/test-certs:ro
+      - $PWD/raft-certs:/var/raft-certs:ro
       - $PWD/startup/core_service.sh:/startup/core_service.sh:ro
     hostname: dss${USS_NODE_IDX:?}.uss${USS_IDX:?}.localutm
     networks:

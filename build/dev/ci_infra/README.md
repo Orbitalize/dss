@@ -6,4 +6,6 @@ It is a temporary solution, used by CI to run the tests against a multi-node raf
 
 The Docker Compose projects are named `ci_infra_*` instead of `local_infra_*` so that this deployment does not interfere with the monitoring one or with the standalone DSS instance when stopped. They share networks and published ports though, so only one of them can be running at a time.
 
+Unlike the monitoring copy, the raft nodes use mutual TLS: `run_locally.sh` creates one CA per USS and one certificate per node with `raft_certs.sh`, and `check_raft_mtls.sh` checks that every raft port rejects connections without a trusted certificate.
+
 The load balancer is also exposed on port `8082` as `core-service`, like the standalone DSS instance, so that `make probe-locally`, `qualify-locally` and `security-locally` can run against it. See the `raft-cluster` entry of the `dss-tests-matrix` job in [ci.yml](../../../.github/workflows/ci.yml).
