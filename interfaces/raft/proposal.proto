@@ -19,4 +19,8 @@ message Proposal {
         rid.Payload rid_payload = 5;
         scd.Payload scd_payload = 6;
     }
+
+    // TODO: remove request_type and value once all the requests are carried by payload.
+    string request_type = 7;
+    bytes value = 8;
 }

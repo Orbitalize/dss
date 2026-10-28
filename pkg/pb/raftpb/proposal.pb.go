@@ -35,7 +35,10 @@ type Proposal struct {
 	//	*Proposal_AuxPayload
 	//	*Proposal_RidPayload
 	//	*Proposal_ScdPayload
-	Payload       isProposal_Payload `protobuf_oneof:"payload"`
+	Payload isProposal_Payload `protobuf_oneof:"payload"`
+	// TODO: remove request_type and value once all the requests are carried by payload.
+	RequestType   string `protobuf:"bytes,7,opt,name=request_type,json=requestType,proto3" json:"request_type,omitempty"`
+	Value         []byte `protobuf:"bytes,8,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -125,6 +128,20 @@ func (x *Proposal) GetScdPayload() *scdpb.Payload {
 	return nil
 }
 
+func (x *Proposal) GetRequestType() string {
+	if x != nil {
+		return x.RequestType
+	}
+	return ""
+}
+
+func (x *Proposal) GetValue() []byte {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
 type isProposal_Payload interface {
 	isProposal_Payload()
 }
@@ -151,7 +168,7 @@ var File_proposal_proto protoreflect.FileDescriptor
 
 const file_proposal_proto_rawDesc = "" +
 	"\n" +
-	"\x0eproposal.proto\x12\x17dss.raftstore.consensus\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x0faux_/aux_.proto\x1a\x11rid/payload.proto\x1a\x11scd/payload.proto\"\x8b\x02\n" +
+	"\x0eproposal.proto\x12\x17dss.raftstore.consensus\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x0faux_/aux_.proto\x1a\x11rid/payload.proto\x1a\x11scd/payload.proto\"\xc4\x02\n" +
 	"\bProposal\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\x17\n" +
 	"\anode_id\x18\x02 \x01(\x04R\x06nodeId\x128\n" +
@@ -161,7 +178,9 @@ const file_proposal_proto_rawDesc = "" +
 	"\vrid_payload\x18\x05 \x01(\v2\f.rid.PayloadH\x00R\n" +
 	"ridPayload\x12/\n" +
 	"\vscd_payload\x18\x06 \x01(\v2\f.scd.PayloadH\x00R\n" +
-	"scdPayloadB\t\n" +
+	"scdPayload\x12!\n" +
+	"\frequest_type\x18\a \x01(\tR\vrequestType\x12\x14\n" +
+	"\x05value\x18\b \x01(\fR\x05valueB\t\n" +
 	"\apayloadB'Z%github.com/interuss/dss/pkg/pb/raftpbb\x06proto3"
 
 var (
