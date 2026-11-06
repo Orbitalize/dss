@@ -37,10 +37,12 @@ type Proposal struct {
 	//	*Proposal_ScdPayload
 	Payload isProposal_Payload `protobuf_oneof:"payload"`
 	// TODO: remove request_type and value once all the requests are carried by payload.
-	RequestType   string `protobuf:"bytes,7,opt,name=request_type,json=requestType,proto3" json:"request_type,omitempty"`
-	Value         []byte `protobuf:"bytes,8,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RequestType string `protobuf:"bytes,7,opt,name=request_type,json=requestType,proto3" json:"request_type,omitempty"`
+	Value       []byte `protobuf:"bytes,8,opt,name=value,proto3" json:"value,omitempty"`
+	// Gzip-compressed encoding of a Proposal carrying only the payload, set instead of payload when it is smaller.
+	CompressedPayload []byte `protobuf:"bytes,9,opt,name=compressed_payload,json=compressedPayload,proto3" json:"compressed_payload,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Proposal) Reset() {
@@ -142,6 +144,13 @@ func (x *Proposal) GetValue() []byte {
 	return nil
 }
 
+func (x *Proposal) GetCompressedPayload() []byte {
+	if x != nil {
+		return x.CompressedPayload
+	}
+	return nil
+}
+
 type isProposal_Payload interface {
 	isProposal_Payload()
 }
@@ -168,7 +177,7 @@ var File_proposal_proto protoreflect.FileDescriptor
 
 const file_proposal_proto_rawDesc = "" +
 	"\n" +
-	"\x0eproposal.proto\x12\x17dss.raftstore.consensus\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x0faux_/aux_.proto\x1a\x11rid/payload.proto\x1a\x11scd/payload.proto\"\xc4\x02\n" +
+	"\x0eproposal.proto\x12\x17dss.raftstore.consensus\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x0faux_/aux_.proto\x1a\x11rid/payload.proto\x1a\x11scd/payload.proto\"\xf3\x02\n" +
 	"\bProposal\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\fR\x02id\x12\x17\n" +
 	"\anode_id\x18\x02 \x01(\x04R\x06nodeId\x128\n" +
@@ -180,7 +189,8 @@ const file_proposal_proto_rawDesc = "" +
 	"\vscd_payload\x18\x06 \x01(\v2\f.scd.PayloadH\x00R\n" +
 	"scdPayload\x12!\n" +
 	"\frequest_type\x18\a \x01(\tR\vrequestType\x12\x14\n" +
-	"\x05value\x18\b \x01(\fR\x05valueB\t\n" +
+	"\x05value\x18\b \x01(\fR\x05value\x12-\n" +
+	"\x12compressed_payload\x18\t \x01(\fR\x11compressedPayloadB\t\n" +
 	"\apayloadB'Z%github.com/interuss/dss/pkg/pb/raftpbb\x06proto3"
 
 var (
