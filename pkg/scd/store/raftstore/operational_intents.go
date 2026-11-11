@@ -75,6 +75,10 @@ func (r *repo) DeleteExpiredOperationalIntents(_ context.Context, threshold time
 	return nil, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "DeleteExpiredOperationalIntents not implemented for raftstore")
 }
 
+func (r *repo) CountExpiredOperationalIntents(_ context.Context, threshold time.Time) (int, error) {
+	return 0, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "CountExpiredOperationalIntents not implemented for raftstore")
+}
+
 func (r *repo) CountOperationalIntents(ctx context.Context) (int64, error) {
 	return r.consensus.HandleReadPayload[int64](ctx, operations.ProposalPayload(&scdpb.Payload{Payload: &scdpb.Payload_CountOperationalIntentsRepoCall{
 		CountOperationalIntentsRepoCall: &scdpb.CountOperationalIntentsRepoCall{},

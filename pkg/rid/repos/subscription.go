@@ -46,6 +46,9 @@ type Subscription interface {
 	// returns the IDs of the deleted Subscriptions. A limit of 0 means unlimited.
 	DeleteExpiredSubscriptions(ctx context.Context, threshold time.Time, limit int) ([]dssmodels.ID, error)
 
+	// CountExpiredSubscriptions counts all expired Subscriptions.
+	CountExpiredSubscriptions(ctx context.Context, threshold time.Time) (int, error)
+
 	// Count the number of existing subscriptions
 	CountSubscriptions(ctx context.Context) (int64, error)
 }

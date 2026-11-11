@@ -321,6 +321,10 @@ func (r *repo) DeleteExpiredSubscriptions(ctx context.Context, threshold time.Ti
 	return dssql.FetchIDs(ctx, r.Queryable, deleteExpiredQuery, args...)
 }
 
+func (r *repo) CountExpiredSubscriptions(_ context.Context, _ time.Time) (int, error) {
+	return 0, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "CountExpiredSubscriptions not implemented for sqlstore")
+}
+
 func (r *repo) CountSubscriptions(ctx context.Context) (int64, error) {
 	var count int64
 	err := r.QueryRow(ctx, "SELECT COUNT(*) FROM subscriptions").Scan(&count)

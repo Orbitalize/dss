@@ -237,6 +237,10 @@ func (r *repo) DeleteExpiredISAs(ctx context.Context, threshold time.Time, limit
 	return dssql.FetchIDs(ctx, r.Queryable, deleteExpiredQuery, args...)
 }
 
+func (r *repo) CountExpiredISAs(_ context.Context, _ time.Time) (int, error) {
+	return 0, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "CountExpiredISAs not implemented for sqlstore")
+}
+
 func (r *repo) CountISAs(ctx context.Context) (int64, error) {
 	var count int64
 	err := r.QueryRow(ctx, "SELECT COUNT(*) FROM identification_service_areas").Scan(&count)

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package models;
+
+import "google/protobuf/duration.proto";
+
+option go_package = "github.com/interuss/dss/pkg/pb";
+
+// EvictionParameters contains the cleanup parameters for an entity type.
+// An entity type is cleaned up only when its parameters are set.
+message EvictionParameters {
+    // Entities are expired when they ended at least ttl before the proposal timestamp.
+    google.protobuf.Duration ttl = 1;
+    // Maximum number of entities evicted, 0 means unlimited.
+    int64 limit = 2;
+}
