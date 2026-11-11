@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	dsserr "github.com/interuss/dss/pkg/errors"
 	"github.com/interuss/dss/pkg/logging"
 	dssmodels "github.com/interuss/dss/pkg/models"
 	scdmodels "github.com/interuss/dss/pkg/scd/models"
@@ -600,6 +601,10 @@ func (c *repo) DeleteExpiredSubscriptions(ctx context.Context, threshold time.Ti
 	}
 
 	return ids, nil
+}
+
+func (c *repo) CountExpiredSubscriptions(_ context.Context, _ time.Time) (int, error) {
+	return 0, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "CountExpiredSubscriptions not implemented for sqlstore")
 }
 
 func (c *repo) CountSubscriptions(ctx context.Context) (int64, error) {

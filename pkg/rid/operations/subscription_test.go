@@ -184,6 +184,10 @@ func (r *fakeSubscriptionRepo) DeleteExpiredSubscriptions(_ context.Context, _ t
 	return nil, nil
 }
 
+func (r *fakeSubscriptionRepo) CountExpiredSubscriptions(_ context.Context, _ time.Time) (int, error) {
+	return 0, nil
+}
+
 func (r *fakeSubscriptionRepo) CountSubscriptions(_ context.Context) (int64, error) {
 	return int64(len(r.subs)), nil
 }
@@ -234,6 +238,10 @@ func (r *fakeSubscriptionRepo) ListExpiredISAs(_ context.Context, _ time.Time) (
 }
 
 func (r *fakeSubscriptionRepo) DeleteExpiredISAs(_ context.Context, _ time.Time, _ int) ([]dssmodels.ID, error) {
+	panic("not implemented")
+}
+
+func (r *fakeSubscriptionRepo) CountExpiredISAs(_ context.Context, _ time.Time) (int, error) {
 	panic("not implemented")
 }
 

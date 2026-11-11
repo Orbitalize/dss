@@ -90,6 +90,10 @@ func (r *repo) DeleteExpiredSubscriptions(_ context.Context, threshold time.Time
 	return nil, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "DeleteExpiredSubscriptions not implemented for raftstore")
 }
 
+func (r *repo) CountExpiredSubscriptions(_ context.Context, threshold time.Time) (int, error) {
+	return 0, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "CountExpiredSubscriptions not implemented for raftstore")
+}
+
 func (r *repo) CountSubscriptions(ctx context.Context) (int64, error) {
 	return r.consensus.HandleReadPayload[int64](ctx, operations.ProposalPayload(&scdpb.Payload{Payload: &scdpb.Payload_CountSubscriptionsRepoCall{
 		CountSubscriptionsRepoCall: &scdpb.CountSubscriptionsRepoCall{},

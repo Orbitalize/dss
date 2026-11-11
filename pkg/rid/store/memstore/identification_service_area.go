@@ -139,6 +139,10 @@ func (r *repo) DeleteExpiredISAs(_ context.Context, threshold time.Time, limit i
 	return nil, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "DeleteExpiredISAs not implemented for memstore")
 }
 
+func (r *repo) CountExpiredISAs(_ context.Context, threshold time.Time) (int, error) {
+	return len(listExpired(r.state.ISAs, threshold, 0)), nil
+}
+
 func (r *repo) CountISAs(_ context.Context) (int64, error) {
 	return int64(len(r.state.ISAs)), nil
 }

@@ -77,6 +77,10 @@ func (r *repo) DeleteExpiredISAs(_ context.Context, threshold time.Time, limit i
 	return nil, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "DeleteExpiredISAs not implemented for raftstore")
 }
 
+func (r *repo) CountExpiredISAs(_ context.Context, threshold time.Time) (int, error) {
+	return 0, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "CountExpiredISAs not implemented for raftstore")
+}
+
 func (r *repo) CountISAs(ctx context.Context) (int64, error) {
 	return r.consensus.HandleReadPayload[int64](ctx, operations.ProposalPayload(&ridpb.Payload{Payload: &ridpb.Payload_CountIsasRepoCall{
 		CountIsasRepoCall: &ridpb.CountISAsRepoCall{},

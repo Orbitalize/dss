@@ -35,6 +35,9 @@ type ISA interface {
 	// DeleteExpiredISAs deletes up to `limit` expired ISAs and returns the IDs of the deleted ISAs. A limit of 0 means unlimited.
 	DeleteExpiredISAs(ctx context.Context, threshold time.Time, limit int) ([]dssmodels.ID, error)
 
+	// CountExpiredISAs counts all expired ISAs.
+	CountExpiredISAs(ctx context.Context, threshold time.Time) (int, error)
+
 	// Count the number of existing ISA
 	CountISAs(ctx context.Context) (int64, error)
 }

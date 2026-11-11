@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package models;
+
+import "google/protobuf/duration.proto";
+
+option go_package = "github.com/interuss/dss/pkg/pb";
+
+// EvictionParameters contains the cleanup parameters for an entity type.
+message EvictionParameters {
+    // Entities are expired when they ended at least ttl before the proposal timestamp.
+    google.protobuf.Duration ttl = 1;
+    // Maximum number of entities evicted, 0 means unlimited.
+    int64 limit = 2;
+}
+
+// EvictionConfig contains the stored eviction settings of a Raft group.
+message EvictionConfig {
+    // Time between two scheduled cleanup jobs.
+    google.protobuf.Duration interval = 1;
+    // Evicted entity types, by name. The entity types absent are not evicted.
+    map<string, EvictionParameters> entities = 2;
+}
+
+// EvictionRequest is a request handled by the eviction of a Raft group, whatever the group.
+message EvictionRequest {
+    oneof request {
+        CleanupRepoCall cleanup = 1;
+        GetEvictionConfigRepoCall get_config = 2;
+        SetEvictionConfigRepoCall set_config = 3;
+    }
+}
+
+message CleanupRepoCall {
+    // Entity types to evict, by name. The entity types absent are skipped.
+    map<string, EvictionParameters> entities = 1;
+    // When false, the expired entities are only counted.
+    bool delete = 2;
+}
+
+message GetEvictionConfigRepoCall {}
+
+message SetEvictionConfigRepoCall {
+    // Replaces the stored eviction settings.
+    EvictionConfig config = 1;
+}

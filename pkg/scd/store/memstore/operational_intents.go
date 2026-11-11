@@ -182,6 +182,10 @@ func (r *repo) DeleteExpiredOperationalIntents(_ context.Context, threshold time
 	return nil, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "DeleteExpiredOperationalIntents not implemented for memstore")
 }
 
+func (r *repo) CountExpiredOperationalIntents(_ context.Context, threshold time.Time) (int, error) {
+	return len(listExpired(r.state.OperationalIntents, threshold, 0)), nil
+}
+
 func (r *repo) CountOperationalIntents(_ context.Context) (int64, error) {
 	return int64(len(r.state.OperationalIntents)), nil
 }

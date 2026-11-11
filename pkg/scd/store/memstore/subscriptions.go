@@ -148,6 +148,10 @@ func (r *repo) DeleteExpiredSubscriptions(_ context.Context, threshold time.Time
 	return nil, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "DeleteExpiredSubscriptions not implemented for memstore")
 }
 
+func (r *repo) CountExpiredSubscriptions(_ context.Context, threshold time.Time) (int, error) {
+	return len(listExpired(r.state.Subscriptions, threshold, 0)), nil
+}
+
 func (r *repo) CountSubscriptions(_ context.Context) (int64, error) {
 	return int64(len(r.state.Subscriptions)), nil
 }
