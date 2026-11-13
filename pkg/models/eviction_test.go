@@ -49,6 +49,48 @@ func TestEvictionParametersFromProto(t *testing.T) {
 	}
 }
 
+func TestEvictionParametersUpdateApply(t *testing.T) {
+	current := &EvictionParameters{TTL: time.Hour, Limit: 5}
+	replacement := &EvictionParameters{TTL: time.Minute}
+
+	require.Equal(t, current, EvictionParametersUpdate{}.Apply(current), "an empty update changes nothing")
+	require.Nil(t, EvictionParametersUpdate{}.Apply(nil), "an empty update keeps an entity type disabled")
+	require.Nil(t, EvictionParametersUpdate{Set: true}.Apply(current), "disable")
+	require.Equal(t, replacement, EvictionParametersUpdate{Set: true, Parameters: replacement}.Apply(current), "replace")
+	require.Equal(t, replacement, EvictionParametersUpdate{Set: true, Parameters: replacement}.Apply(nil), "enable")
+
+	got := EvictionParametersUpdate{Set: true, Parameters: replacement}.Apply(nil)
+	got.Limit = 3
+	require.Zero(t, replacement.Limit, "the applied parameters don't alias the update")
+}
+
+func TestEvictionParametersUpdateProtoRoundTrip(t *testing.T) {
+	for name, u := range map[string]EvictionParametersUpdate{
+		"unchanged": {},
+		"disable":   {Set: true},
+		"replace":   {Set: true, Parameters: &EvictionParameters{TTL: time.Minute, Limit: 2}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := EvictionParametersUpdateFromProto(u.ToProto())
+			require.NoError(t, err)
+			require.Equal(t, u, got)
+		})
+	}
+
+	t.Run("without a change is unchanged", func(t *testing.T) {
+		got, err := EvictionParametersUpdateFromProto(&modelspb.EvictionParametersUpdate{})
+		require.NoError(t, err)
+		require.Equal(t, EvictionParametersUpdate{}, got)
+	})
+
+	t.Run("invalid parameters are rejected", func(t *testing.T) {
+		_, err := EvictionParametersUpdateFromProto(&modelspb.EvictionParametersUpdate{
+			Change: &modelspb.EvictionParametersUpdate_Parameters{Parameters: &modelspb.EvictionParameters{}},
+		})
+		require.Error(t, err)
+	})
+}
+
 func TestEvictionParametersRoundTrip(t *testing.T) {
 	for _, p := range []*EvictionParameters{
 		{TTL: 30 * time.Minute, Limit: 5},

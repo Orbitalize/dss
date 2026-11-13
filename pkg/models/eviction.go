@@ -47,3 +47,54 @@ func EvictionParametersFromProto(pb *modelspb.EvictionParameters) (*EvictionPara
 	}
 	return p, nil
 }
+
+// EvictionParametersUpdate changes the stored eviction parameters of an entity type.
+// The zero value leaves them unchanged.
+type EvictionParametersUpdate struct {
+	// Set is true when the update changes the parameters to Parameters. A nil Parameters disables the entity type.
+	Set        bool
+	Parameters *EvictionParameters
+}
+
+// Apply returns the parameters resulting from u applied to current.
+func (u EvictionParametersUpdate) Apply(current *EvictionParameters) *EvictionParameters {
+	if !u.Set {
+		return current
+	}
+	if u.Parameters == nil {
+		return nil
+	}
+	p := *u.Parameters
+	return &p
+}
+
+// ToProto returns nil for an update leaving the parameters unchanged.
+func (u EvictionParametersUpdate) ToProto() *modelspb.EvictionParametersUpdate {
+	if !u.Set {
+		return nil
+	}
+	if u.Parameters == nil {
+		return &modelspb.EvictionParametersUpdate{Change: &modelspb.EvictionParametersUpdate_Disable{Disable: true}}
+	}
+	return &modelspb.EvictionParametersUpdate{Change: &modelspb.EvictionParametersUpdate_Parameters{Parameters: u.Parameters.ToProto()}}
+}
+
+// EvictionParametersUpdateFromProto converts and validates an update. A nil pb, or one without a change, leaves the
+// parameters unchanged.
+func EvictionParametersUpdateFromProto(pb *modelspb.EvictionParametersUpdate) (EvictionParametersUpdate, error) {
+	switch change := pb.GetChange().(type) {
+	case *modelspb.EvictionParametersUpdate_Parameters:
+		if change.Parameters == nil {
+			return EvictionParametersUpdate{}, stacktrace.NewError("missing parameters")
+		}
+		p, err := EvictionParametersFromProto(change.Parameters)
+		if err != nil {
+			return EvictionParametersUpdate{}, stacktrace.Propagate(err, "invalid parameters")
+		}
+		return EvictionParametersUpdate{Set: true, Parameters: p}, nil
+	case *modelspb.EvictionParametersUpdate_Disable:
+		return EvictionParametersUpdate{Set: change.Disable}, nil
+	default:
+		return EvictionParametersUpdate{}, nil
+	}
+}

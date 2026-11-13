@@ -14,3 +14,14 @@ message EvictionParameters {
     // Maximum number of entities evicted, 0 means unlimited.
     int64 limit = 2;
 }
+
+// EvictionParametersUpdate changes the stored eviction parameters of an entity type.
+// An unset update leaves them unchanged.
+message EvictionParametersUpdate {
+    oneof change {
+        // Enables the entity type, or replaces its TTL and limit.
+        EvictionParameters parameters = 1;
+        // Disables the entity type when true.
+        bool disable = 2;
+    }
+}

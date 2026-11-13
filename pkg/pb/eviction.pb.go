@@ -78,6 +78,92 @@ func (x *EvictionParameters) GetLimit() int64 {
 	return 0
 }
 
+// EvictionParametersUpdate changes the stored eviction parameters of an entity type.
+// An unset update leaves them unchanged.
+type EvictionParametersUpdate struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Change:
+	//
+	//	*EvictionParametersUpdate_Parameters
+	//	*EvictionParametersUpdate_Disable
+	Change        isEvictionParametersUpdate_Change `protobuf_oneof:"change"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EvictionParametersUpdate) Reset() {
+	*x = EvictionParametersUpdate{}
+	mi := &file_eviction_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EvictionParametersUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EvictionParametersUpdate) ProtoMessage() {}
+
+func (x *EvictionParametersUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_eviction_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EvictionParametersUpdate.ProtoReflect.Descriptor instead.
+func (*EvictionParametersUpdate) Descriptor() ([]byte, []int) {
+	return file_eviction_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *EvictionParametersUpdate) GetChange() isEvictionParametersUpdate_Change {
+	if x != nil {
+		return x.Change
+	}
+	return nil
+}
+
+func (x *EvictionParametersUpdate) GetParameters() *EvictionParameters {
+	if x != nil {
+		if x, ok := x.Change.(*EvictionParametersUpdate_Parameters); ok {
+			return x.Parameters
+		}
+	}
+	return nil
+}
+
+func (x *EvictionParametersUpdate) GetDisable() bool {
+	if x != nil {
+		if x, ok := x.Change.(*EvictionParametersUpdate_Disable); ok {
+			return x.Disable
+		}
+	}
+	return false
+}
+
+type isEvictionParametersUpdate_Change interface {
+	isEvictionParametersUpdate_Change()
+}
+
+type EvictionParametersUpdate_Parameters struct {
+	// Enables the entity type, or replaces its TTL and limit.
+	Parameters *EvictionParameters `protobuf:"bytes,1,opt,name=parameters,proto3,oneof"`
+}
+
+type EvictionParametersUpdate_Disable struct {
+	// Disables the entity type when true.
+	Disable bool `protobuf:"varint,2,opt,name=disable,proto3,oneof"`
+}
+
+func (*EvictionParametersUpdate_Parameters) isEvictionParametersUpdate_Change() {}
+
+func (*EvictionParametersUpdate_Disable) isEvictionParametersUpdate_Change() {}
+
 var File_eviction_proto protoreflect.FileDescriptor
 
 const file_eviction_proto_rawDesc = "" +
@@ -85,7 +171,13 @@ const file_eviction_proto_rawDesc = "" +
 	"\x0eeviction.proto\x12\x06models\x1a\x1egoogle/protobuf/duration.proto\"W\n" +
 	"\x12EvictionParameters\x12+\n" +
 	"\x03ttl\x18\x01 \x01(\v2\x19.google.protobuf.DurationR\x03ttl\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x03R\x05limitB Z\x1egithub.com/interuss/dss/pkg/pbb\x06proto3"
+	"\x05limit\x18\x02 \x01(\x03R\x05limit\"~\n" +
+	"\x18EvictionParametersUpdate\x12<\n" +
+	"\n" +
+	"parameters\x18\x01 \x01(\v2\x1a.models.EvictionParametersH\x00R\n" +
+	"parameters\x12\x1a\n" +
+	"\adisable\x18\x02 \x01(\bH\x00R\adisableB\b\n" +
+	"\x06changeB Z\x1egithub.com/interuss/dss/pkg/pbb\x06proto3"
 
 var (
 	file_eviction_proto_rawDescOnce sync.Once
@@ -99,18 +191,20 @@ func file_eviction_proto_rawDescGZIP() []byte {
 	return file_eviction_proto_rawDescData
 }
 
-var file_eviction_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_eviction_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_eviction_proto_goTypes = []any{
-	(*EvictionParameters)(nil),  // 0: models.EvictionParameters
-	(*durationpb.Duration)(nil), // 1: google.protobuf.Duration
+	(*EvictionParameters)(nil),       // 0: models.EvictionParameters
+	(*EvictionParametersUpdate)(nil), // 1: models.EvictionParametersUpdate
+	(*durationpb.Duration)(nil),      // 2: google.protobuf.Duration
 }
 var file_eviction_proto_depIdxs = []int32{
-	1, // 0: models.EvictionParameters.ttl:type_name -> google.protobuf.Duration
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 0: models.EvictionParameters.ttl:type_name -> google.protobuf.Duration
+	0, // 1: models.EvictionParametersUpdate.parameters:type_name -> models.EvictionParameters
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_eviction_proto_init() }
@@ -118,13 +212,17 @@ func file_eviction_proto_init() {
 	if File_eviction_proto != nil {
 		return
 	}
+	file_eviction_proto_msgTypes[1].OneofWrappers = []any{
+		(*EvictionParametersUpdate_Parameters)(nil),
+		(*EvictionParametersUpdate_Disable)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_eviction_proto_rawDesc), len(file_eviction_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
