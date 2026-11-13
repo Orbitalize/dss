@@ -41,7 +41,7 @@ func init() {
 	RaftCmd.PersistentFlags().StringSliceVar(&groups, "groups", groupNames, "Comma-separated Raft groups to act on, all of them if not set")
 	RaftCmd.PersistentFlags().StringVar(&adminSocket, "admin_socket", "/run/dss/admin.sock", "Path of the Unix socket of the admin API of the DSS node, matching its --admin_socket")
 	RaftCmd.PersistentFlags().DurationVar(&adminTimeout, "admin_timeout", time.Minute, "Timeout of each request to the admin API")
-	RaftCmd.AddCommand(bootstrapCmd, addCmd, removeCmd, listCmd, nodeCmd)
+	RaftCmd.AddCommand(bootstrapCmd, addCmd, removeCmd, listCmd, nodeCmd, evictCmd)
 }
 
 // namedGroup is a Raft group of the DSS node, managed through its admin API.
