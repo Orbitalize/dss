@@ -249,6 +249,14 @@ func (r *fakeSubscriptionRepo) CountISAs(_ context.Context) (int64, error) {
 	return int64(len(r.isas)), nil
 }
 
+func (r *fakeSubscriptionRepo) GetEvictionConfig(_ context.Context) (*ridmodels.EvictionConfig, error) {
+	panic("not implemented")
+}
+
+func (r *fakeSubscriptionRepo) SetEvictionConfig(_ context.Context, _ ridmodels.EvictionConfig) (*ridmodels.EvictionConfig, error) {
+	panic("not implemented")
+}
+
 func TestBadOwner(t *testing.T) {
 	ctx := newTestContext()
 	repo := newFakeSubscriptionRepo()

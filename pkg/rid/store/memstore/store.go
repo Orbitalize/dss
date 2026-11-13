@@ -10,6 +10,7 @@ import (
 	"github.com/interuss/dss/pkg/memstore"
 	"github.com/interuss/dss/pkg/memstore/utils"
 	dssmodels "github.com/interuss/dss/pkg/models"
+	ridmodels "github.com/interuss/dss/pkg/rid/models"
 	"github.com/interuss/dss/pkg/rid/repos"
 	"github.com/interuss/stacktrace"
 	"go.uber.org/zap"
@@ -27,6 +28,8 @@ type state struct {
 	ISAs map[dssmodels.ID]*isaRecord
 	// Subscriptions holds the stored subscriptions keyed by ID.
 	Subscriptions map[dssmodels.ID]*subscriptionRecord
+	// EvictionConfig holds the eviction settings, nil until they are first set.
+	EvictionConfig *ridmodels.EvictionConfig
 }
 
 // isaRecord is the in-memory representation of an ISA. It intentionally
@@ -197,7 +200,7 @@ func (s state) clone() state {
 	for id, rec := range s.Subscriptions {
 		subs[id] = rec.clone()
 	}
-	return state{ISAs: isas, Subscriptions: subs}
+	return state{ISAs: isas, Subscriptions: subs, EvictionConfig: s.EvictionConfig.Clone()}
 }
 
 // Checkpoint ask the repo to store a quick, internal checkpoint with its current state.

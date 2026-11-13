@@ -46,6 +46,8 @@ type Payload struct {
 	//	*Payload_UpdateNotificationIdxsInCellsRepoCall
 	//	*Payload_MaxSubscriptionCountInCellsByOwnerRepoCall
 	//	*Payload_CountSubscriptionsRepoCall
+	//	*Payload_GetEvictionConfigRepoCall
+	//	*Payload_SetEvictionConfigRepoCall
 	Payload       isPayload_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -277,6 +279,24 @@ func (x *Payload) GetCountSubscriptionsRepoCall() *CountSubscriptionsRepoCall {
 	return nil
 }
 
+func (x *Payload) GetGetEvictionConfigRepoCall() *GetEvictionConfigRepoCall {
+	if x != nil {
+		if x, ok := x.Payload.(*Payload_GetEvictionConfigRepoCall); ok {
+			return x.GetEvictionConfigRepoCall
+		}
+	}
+	return nil
+}
+
+func (x *Payload) GetSetEvictionConfigRepoCall() *SetEvictionConfigRepoCall {
+	if x != nil {
+		if x, ok := x.Payload.(*Payload_SetEvictionConfigRepoCall); ok {
+			return x.SetEvictionConfigRepoCall
+		}
+	}
+	return nil
+}
+
 type isPayload_Payload interface {
 	isPayload_Payload()
 }
@@ -369,6 +389,15 @@ type Payload_CountSubscriptionsRepoCall struct {
 	CountSubscriptionsRepoCall *CountSubscriptionsRepoCall `protobuf:"bytes,88,opt,name=count_subscriptions_repo_call,json=countSubscriptionsRepoCall,proto3,oneof"`
 }
 
+type Payload_GetEvictionConfigRepoCall struct {
+	// Store-wide repository requests
+	GetEvictionConfigRepoCall *GetEvictionConfigRepoCall `protobuf:"bytes,101,opt,name=get_eviction_config_repo_call,json=getEvictionConfigRepoCall,proto3,oneof"`
+}
+
+type Payload_SetEvictionConfigRepoCall struct {
+	SetEvictionConfigRepoCall *SetEvictionConfigRepoCall `protobuf:"bytes,102,opt,name=set_eviction_config_repo_call,json=setEvictionConfigRepoCall,proto3,oneof"`
+}
+
 func (*Payload_CreateIdentificationServiceAreaOperation) isPayload_Payload() {}
 
 func (*Payload_UpdateIdentificationServiceAreaOperation) isPayload_Payload() {}
@@ -411,11 +440,15 @@ func (*Payload_MaxSubscriptionCountInCellsByOwnerRepoCall) isPayload_Payload() {
 
 func (*Payload_CountSubscriptionsRepoCall) isPayload_Payload() {}
 
+func (*Payload_GetEvictionConfigRepoCall) isPayload_Payload() {}
+
+func (*Payload_SetEvictionConfigRepoCall) isPayload_Payload() {}
+
 var File_rid_payload_proto protoreflect.FileDescriptor
 
 const file_rid_payload_proto_rawDesc = "" +
 	"\n" +
-	"\x11rid/payload.proto\x12\x03rid\x1a\rrid/isa.proto\x1a\x17rid/subscriptions.proto\"\xc3\x11\n" +
+	"\x11rid/payload.proto\x12\x03rid\x1a\x19rid/eviction_config.proto\x1a\rrid/isa.proto\x1a\x17rid/subscriptions.proto\"\x8b\x13\n" +
 	"\aPayload\x12\x8f\x01\n" +
 	",create_identification_service_area_operation\x18\x14 \x01(\v2-.rid.CreateIdentificationServiceAreaOperationH\x00R(createIdentificationServiceAreaOperation\x12\x8f\x01\n" +
 	",update_identification_service_area_operation\x18\x15 \x01(\v2-.rid.UpdateIdentificationServiceAreaOperationH\x00R(updateIdentificationServiceAreaOperation\x12\x8f\x01\n" +
@@ -437,7 +470,9 @@ const file_rid_payload_proto_rawDesc = "" +
 	"'search_subscriptions_by_owner_repo_call\x18U \x01(\v2'.rid.SearchSubscriptionsByOwnerRepoCallH\x00R\"searchSubscriptionsByOwnerRepoCall\x12\x88\x01\n" +
 	"+update_notification_idxs_in_cells_repo_call\x18V \x01(\v2*.rid.UpdateNotificationIdxsInCellsRepoCallH\x00R%updateNotificationIdxsInCellsRepoCall\x12\x99\x01\n" +
 	"2max_subscription_count_in_cells_by_owner_repo_call\x18W \x01(\v2/.rid.MaxSubscriptionCountInCellsByOwnerRepoCallH\x00R*maxSubscriptionCountInCellsByOwnerRepoCall\x12d\n" +
-	"\x1dcount_subscriptions_repo_call\x18X \x01(\v2\x1f.rid.CountSubscriptionsRepoCallH\x00R\x1acountSubscriptionsRepoCallB\t\n" +
+	"\x1dcount_subscriptions_repo_call\x18X \x01(\v2\x1f.rid.CountSubscriptionsRepoCallH\x00R\x1acountSubscriptionsRepoCall\x12b\n" +
+	"\x1dget_eviction_config_repo_call\x18e \x01(\v2\x1e.rid.GetEvictionConfigRepoCallH\x00R\x19getEvictionConfigRepoCall\x12b\n" +
+	"\x1dset_eviction_config_repo_call\x18f \x01(\v2\x1e.rid.SetEvictionConfigRepoCallH\x00R\x19setEvictionConfigRepoCallB\t\n" +
 	"\apayloadB&Z$github.com/interuss/dss/pkg/pb/ridpbb\x06proto3"
 
 var (
@@ -476,6 +511,8 @@ var file_rid_payload_proto_goTypes = []any{
 	(*UpdateNotificationIdxsInCellsRepoCall)(nil),      // 19: rid.UpdateNotificationIdxsInCellsRepoCall
 	(*MaxSubscriptionCountInCellsByOwnerRepoCall)(nil), // 20: rid.MaxSubscriptionCountInCellsByOwnerRepoCall
 	(*CountSubscriptionsRepoCall)(nil),                 // 21: rid.CountSubscriptionsRepoCall
+	(*GetEvictionConfigRepoCall)(nil),                  // 22: rid.GetEvictionConfigRepoCall
+	(*SetEvictionConfigRepoCall)(nil),                  // 23: rid.SetEvictionConfigRepoCall
 }
 var file_rid_payload_proto_depIdxs = []int32{
 	1,  // 0: rid.Payload.create_identification_service_area_operation:type_name -> rid.CreateIdentificationServiceAreaOperation
@@ -499,11 +536,13 @@ var file_rid_payload_proto_depIdxs = []int32{
 	19, // 18: rid.Payload.update_notification_idxs_in_cells_repo_call:type_name -> rid.UpdateNotificationIdxsInCellsRepoCall
 	20, // 19: rid.Payload.max_subscription_count_in_cells_by_owner_repo_call:type_name -> rid.MaxSubscriptionCountInCellsByOwnerRepoCall
 	21, // 20: rid.Payload.count_subscriptions_repo_call:type_name -> rid.CountSubscriptionsRepoCall
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	22, // 21: rid.Payload.get_eviction_config_repo_call:type_name -> rid.GetEvictionConfigRepoCall
+	23, // 22: rid.Payload.set_eviction_config_repo_call:type_name -> rid.SetEvictionConfigRepoCall
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_rid_payload_proto_init() }
@@ -511,6 +550,7 @@ func file_rid_payload_proto_init() {
 	if File_rid_payload_proto != nil {
 		return
 	}
+	file_rid_eviction_config_proto_init()
 	file_rid_isa_proto_init()
 	file_rid_subscriptions_proto_init()
 	file_rid_payload_proto_msgTypes[0].OneofWrappers = []any{
@@ -535,6 +575,8 @@ func file_rid_payload_proto_init() {
 		(*Payload_UpdateNotificationIdxsInCellsRepoCall)(nil),
 		(*Payload_MaxSubscriptionCountInCellsByOwnerRepoCall)(nil),
 		(*Payload_CountSubscriptionsRepoCall)(nil),
+		(*Payload_GetEvictionConfigRepoCall)(nil),
+		(*Payload_SetEvictionConfigRepoCall)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

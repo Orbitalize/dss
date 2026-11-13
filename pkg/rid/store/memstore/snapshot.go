@@ -5,6 +5,7 @@ import (
 	dssmodels "github.com/interuss/dss/pkg/models"
 	"github.com/interuss/dss/pkg/pb/raftpb"
 	"github.com/interuss/dss/pkg/pb/ridpb/snapshotpb"
+	ridmodels "github.com/interuss/dss/pkg/rid/models"
 	"github.com/interuss/stacktrace"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -40,6 +41,10 @@ func (r *repo) GetSnapshot() (*raftpb.Snapshot, error) {
 			Writer:            rec.Writer,
 			UpdatedAt:         timestamppb.New(rec.UpdatedAt),
 		}
+	}
+
+	if r.state.EvictionConfig != nil {
+		snap.EvictionConfig = r.state.EvictionConfig.ToProto()
 	}
 
 	return &raftpb.Snapshot{AppSnapshot: &raftpb.Snapshot_RidSnapshot{RidSnapshot: snap}}, nil
@@ -84,6 +89,13 @@ func (r *repo) RestoreFromSnapshot(s *raftpb.Snapshot) error {
 			AltitudeLo:        utils.ClonePtr(pb.AltitudeLo),
 			Writer:            pb.GetWriter(),
 			UpdatedAt:         pb.GetUpdatedAt().AsTime(),
+		}
+	}
+
+	if snap.GetEvictionConfig() != nil {
+		restored.EvictionConfig = new(ridmodels.EvictionConfig)
+		if err := restored.EvictionConfig.FromProto(snap.GetEvictionConfig()); err != nil {
+			return stacktrace.Propagate(err, "invalid eviction config in snapshot")
 		}
 	}
 

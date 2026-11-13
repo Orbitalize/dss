@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package rid;
+
+import "google/protobuf/duration.proto";
+import "eviction.proto";
+
+option go_package = "github.com/interuss/dss/pkg/pb/ridpb";
+
+// EvictionConfig contains the stored eviction settings of the RID group.
+message EvictionConfig {
+    // Time between two scheduled cleanup jobs.
+    google.protobuf.Duration interval = 1;
+    // Unset entity types are not evicted.
+    models.EvictionParameters isas = 2;
+    models.EvictionParameters subscriptions = 3;
+}
+
+// Repository requests
+
+message GetEvictionConfigRepoCall {}
+
+message SetEvictionConfigRepoCall {
+    // Replaces the stored eviction settings.
+    EvictionConfig config = 1;
+}
