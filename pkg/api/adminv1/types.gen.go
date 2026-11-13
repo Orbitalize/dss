@@ -51,3 +51,53 @@ type RaftGroup struct {
 	// Nodes that are or were members of the Raft group.
 	Nodes []RaftNode `json:"nodes"`
 }
+
+// Eviction parameters of an entity type of a Raft group.
+type EntityEviction struct {
+	// Entity type, unique within a request: `isas` or `subscriptions` for the `rid` group, `operational_intents` or `subscriptions` for the `scd` group.
+	Type string `json:"type"`
+
+	// Duration, as a Go duration string, after their end at which entities are expired. Must be positive.
+	Ttl string `json:"ttl"`
+
+	// Maximum number of entities evicted by a cleanup job, 0 for unlimited.
+	Limit *int64 `json:"limit,omitempty"`
+}
+
+// Eviction settings of a Raft group, used by the cleanup jobs scheduled by its leader.
+type EvictionConfig struct {
+	// Duration, as a Go duration string, between two scheduled cleanup jobs. Must be positive.
+	Interval string `json:"interval"`
+
+	// Entity types evicted by the scheduled cleanup jobs. The entity types not listed are not evicted.
+	Entities []EntityEviction `json:"entities"`
+}
+
+// Eviction settings of a Raft group, as stored in its replicated state. `config` is absent if they were never set, in which case nothing is evicted by the scheduled cleanup jobs.
+type EvictionConfigResponse struct {
+	Config *EvictionConfig `json:"config,omitempty"`
+}
+
+// Parameters of a cleanup job run on demand, independently of the eviction settings.
+type EvictionRunParameters struct {
+	// Entity types to evict. The entity types not listed are skipped.
+	Entities []EntityEviction `json:"entities"`
+
+	// Whether to delete the expired entities. When false, they are only counted, and the limits must not be set.
+	Delete *bool `json:"delete,omitempty"`
+}
+
+// Number of entities of an entity type evicted, or that would be evicted, by a cleanup job.
+type EntityEvictionCount struct {
+	// Entity type.
+	Type string `json:"type"`
+
+	// Number of entities deleted, or, when the job only counts, number of expired entities regardless of the limit.
+	Count int64 `json:"count"`
+}
+
+// Result of a cleanup job run on demand.
+type EvictionRunResult struct {
+	// Number of entities per entity type of the job, in the order of the request.
+	Counts []EntityEvictionCount `json:"counts"`
+}

@@ -102,6 +102,105 @@ components:
           items:
             $ref: '#/components/schemas/RaftNode'
 
+    EntityEviction:
+      description: Eviction parameters of an entity type of a Raft group.
+      type: object
+      required:
+        - type
+        - ttl
+      properties:
+        type:
+          description: >-
+            Entity type, unique within a request: `isas` or `subscriptions` for the `rid` group,
+            `operational_intents` or `subscriptions` for the `scd` group.
+          type: string
+          example: isas
+        ttl:
+          description: >-
+            Duration, as a Go duration string, after their end at which entities are expired. Must be positive.
+          type: string
+          example: 30m
+        limit:
+          description: Maximum number of entities evicted by a cleanup job, 0 for unlimited.
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+
+    EvictionConfig:
+      description: Eviction settings of a Raft group, used by the cleanup jobs scheduled by its leader.
+      type: object
+      required:
+        - interval
+        - entities
+      properties:
+        interval:
+          description: Duration, as a Go duration string, between two scheduled cleanup jobs. Must be positive.
+          type: string
+          example: 1h
+        entities:
+          description: Entity types evicted by the scheduled cleanup jobs. The entity types not listed are not evicted.
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityEviction'
+
+    EvictionConfigResponse:
+      description: >-
+        Eviction settings of a Raft group, as stored in its replicated state. `config` is absent if they were never
+        set, in which case nothing is evicted by the scheduled cleanup jobs.
+      type: object
+      properties:
+        config:
+          $ref: '#/components/schemas/EvictionConfig'
+
+    EvictionRunParameters:
+      description: Parameters of a cleanup job run on demand, independently of the eviction settings.
+      type: object
+      required:
+        - entities
+      properties:
+        entities:
+          description: Entity types to evict. The entity types not listed are skipped.
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityEviction'
+        delete:
+          description: >-
+            Whether to delete the expired entities. When false, they are only counted, and the limits must not be set.
+          type: boolean
+          default: false
+
+    EntityEvictionCount:
+      description: Number of entities of an entity type evicted, or that would be evicted, by a cleanup job.
+      type: object
+      required:
+        - type
+        - count
+      properties:
+        type:
+          description: Entity type.
+          type: string
+          example: isas
+        count:
+          description: >-
+            Number of entities deleted, or, when the job only counts, number of expired entities regardless of the
+            limit.
+          type: integer
+          format: int64
+          example: 12
+
+    EvictionRunResult:
+      description: Result of a cleanup job run on demand.
+      type: object
+      required:
+        - counts
+      properties:
+        counts:
+          description: Number of entities per entity type of the job, in the order of the request.
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityEvictionCount'
+
 paths:
   /admin/v1/raft/groups/{group_name}/this_node:
     parameters:
@@ -290,6 +389,116 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: This DSS node has no Raft group with this name, e.g. `scd` when it runs without `--enable_scd`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/v1/raft/groups/{group_name}/eviction/config:
+    parameters:
+      - name: group_name
+        in: path
+        required: true
+        description: Name of the Raft group.
+        schema:
+          $ref: '#/components/schemas/RaftGroupName'
+    get:
+      summary: Retrieve the eviction settings of a Raft group
+      operationId: getEvictionConfig
+      tags: [ raft ]
+      responses:
+        '200':
+          description: The eviction settings were retrieved successfully, or were never set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvictionConfigResponse'
+        '404':
+          description: >-
+            This DSS node has no Raft group with this name, e.g. `scd` when it runs without `--enable_scd`, or the
+            group has no eviction, e.g. `aux`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Replace the eviction settings of a Raft group
+      description: >-
+        The settings replace the previous ones as a whole: the entity types not listed are no longer evicted.
+        The request returns once the change is adopted by the group.
+      operationId: putEvictionConfig
+      tags: [ raft ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvictionConfig'
+      responses:
+        '200':
+          description: The eviction settings were replaced. They are returned as stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvictionConfig'
+        '400':
+          description: >-
+            The request was not properly formed, e.g. an invalid duration, a non-positive interval or TTL, a negative
+            limit, or an entity type unknown for the group or listed more than once.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: >-
+            This DSS node has no Raft group with this name, e.g. `scd` when it runs without `--enable_scd`, or the
+            group has no eviction, e.g. `aux`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/v1/raft/groups/{group_name}/eviction/runs:
+    parameters:
+      - name: group_name
+        in: path
+        required: true
+        description: Name of the Raft group.
+        schema:
+          $ref: '#/components/schemas/RaftGroupName'
+    post:
+      summary: Run a cleanup job on a Raft group
+      description: >-
+        The job evicts the expired entities of the listed entity types, independently of the eviction settings.
+        When it deletes them, it is applied by every member of the group and the request returns once it is applied by
+        this DSS node. When it only counts them, nothing is changed.
+      operationId: createEvictionRun
+      tags: [ raft ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvictionRunParameters'
+      responses:
+        '200':
+          description: The cleanup job was run.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvictionRunResult'
+        '400':
+          description: >-
+            The request was not properly formed, e.g. an invalid duration, a non-positive TTL, a negative limit, a
+            limit set when only counting, or an entity type unknown for the group or listed more than once.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: >-
+            This DSS node has no Raft group with this name, e.g. `scd` when it runs without `--enable_scd`, or the
+            group has no eviction, e.g. `aux`.
           content:
             application/json:
               schema:

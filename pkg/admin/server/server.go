@@ -10,4 +10,6 @@ type Server struct {
 	Logger *zap.Logger
 	// raftGroups are the Raft groups of the DSS node, indexed by name.
 	raftGroups map[string]*consensus.Consensus
+	// evictors are the evictors of the Raft groups with eviction, indexed by group name.
+	evictors map[string]Evictor
 }
