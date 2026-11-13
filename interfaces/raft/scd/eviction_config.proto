@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package scd;
+
+import "google/protobuf/duration.proto";
+import "eviction.proto";
+
+option go_package = "github.com/interuss/dss/pkg/pb/scdpb";
+
+// EvictionConfig contains the stored eviction settings of the SCD group.
+message EvictionConfig {
+    // Time between two scheduled cleanup jobs.
+    google.protobuf.Duration interval = 1;
+    // Unset entity types are not evicted.
+    models.EvictionParameters operational_intents = 2;
+    models.EvictionParameters subscriptions = 3;
+}
+
+// Repository requests
+
+message GetEvictionConfigRepoCall {}
+
+message SetEvictionConfigRepoCall {
+    // Replaces the stored eviction settings.
+    EvictionConfig config = 1;
+}

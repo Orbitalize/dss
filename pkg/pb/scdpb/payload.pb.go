@@ -62,6 +62,8 @@ type Payload struct {
 	//	*Payload_IncrementNotificationIndicesForOperationalIntentsRepoCall
 	//	*Payload_IncrementNotificationIndicesForConstraintsRepoCall
 	//	*Payload_CountSubscriptionsRepoCall
+	//	*Payload_GetEvictionConfigRepoCall
+	//	*Payload_SetEvictionConfigRepoCall
 	Payload       isPayload_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -437,6 +439,24 @@ func (x *Payload) GetCountSubscriptionsRepoCall() *CountSubscriptionsRepoCall {
 	return nil
 }
 
+func (x *Payload) GetGetEvictionConfigRepoCall() *GetEvictionConfigRepoCall {
+	if x != nil {
+		if x, ok := x.Payload.(*Payload_GetEvictionConfigRepoCall); ok {
+			return x.GetEvictionConfigRepoCall
+		}
+	}
+	return nil
+}
+
+func (x *Payload) GetSetEvictionConfigRepoCall() *SetEvictionConfigRepoCall {
+	if x != nil {
+		if x, ok := x.Payload.(*Payload_SetEvictionConfigRepoCall); ok {
+			return x.SetEvictionConfigRepoCall
+		}
+	}
+	return nil
+}
+
 type isPayload_Payload interface {
 	isPayload_Payload()
 }
@@ -597,6 +617,15 @@ type Payload_CountSubscriptionsRepoCall struct {
 	CountSubscriptionsRepoCall *CountSubscriptionsRepoCall `protobuf:"bytes,166,opt,name=count_subscriptions_repo_call,json=countSubscriptionsRepoCall,proto3,oneof"`
 }
 
+type Payload_GetEvictionConfigRepoCall struct {
+	// Store-wide repository requests
+	GetEvictionConfigRepoCall *GetEvictionConfigRepoCall `protobuf:"bytes,181,opt,name=get_eviction_config_repo_call,json=getEvictionConfigRepoCall,proto3,oneof"`
+}
+
+type Payload_SetEvictionConfigRepoCall struct {
+	SetEvictionConfigRepoCall *SetEvictionConfigRepoCall `protobuf:"bytes,182,opt,name=set_eviction_config_repo_call,json=setEvictionConfigRepoCall,proto3,oneof"`
+}
+
 func (*Payload_GetUssAvailabilityOperation) isPayload_Payload() {}
 
 func (*Payload_SetUssAvailabilityOperation) isPayload_Payload() {}
@@ -671,11 +700,15 @@ func (*Payload_IncrementNotificationIndicesForConstraintsRepoCall) isPayload_Pay
 
 func (*Payload_CountSubscriptionsRepoCall) isPayload_Payload() {}
 
+func (*Payload_GetEvictionConfigRepoCall) isPayload_Payload() {}
+
+func (*Payload_SetEvictionConfigRepoCall) isPayload_Payload() {}
+
 var File_scd_payload_proto protoreflect.FileDescriptor
 
 const file_scd_payload_proto_rawDesc = "" +
 	"\n" +
-	"\x11scd/payload.proto\x12\x03scd\x1a\x16scd/availability.proto\x1a\x14scd/constraint.proto\x1a\x1dscd/operational_intents.proto\x1a\x17scd/subscriptions.proto\"\xb6\"\n" +
+	"\x11scd/payload.proto\x12\x03scd\x1a\x16scd/availability.proto\x1a\x14scd/constraint.proto\x1a\x19scd/eviction_config.proto\x1a\x1dscd/operational_intents.proto\x1a\x17scd/subscriptions.proto\"\x80$\n" +
 	"\aPayload\x12g\n" +
 	"\x1eget_uss_availability_operation\x18\x14 \x01(\v2 .scd.GetUssAvailabilityOperationH\x00R\x1bgetUssAvailabilityOperation\x12g\n" +
 	"\x1eset_uss_availability_operation\x18\x15 \x01(\v2 .scd.SetUssAvailabilityOperationH\x00R\x1bsetUssAvailabilityOperation\x12e\n" +
@@ -713,7 +746,9 @@ const file_scd_payload_proto_rawDesc = "" +
 	"\x1ddelete_subscription_repo_call\x18\xa3\x01 \x01(\v2\x1f.scd.DeleteSubscriptionRepoCallH\x00R\x1adeleteSubscriptionRepoCall\x12\xc6\x01\n" +
 	"@increment_notification_indices_for_operational_intents_repo_call\x18\xa4\x01 \x01(\v2>.scd.IncrementNotificationIndicesForOperationalIntentsRepoCallH\x00R9incrementNotificationIndicesForOperationalIntentsRepoCall\x12\xb0\x01\n" +
 	"8increment_notification_indices_for_constraints_repo_call\x18\xa5\x01 \x01(\v27.scd.IncrementNotificationIndicesForConstraintsRepoCallH\x00R2incrementNotificationIndicesForConstraintsRepoCall\x12e\n" +
-	"\x1dcount_subscriptions_repo_call\x18\xa6\x01 \x01(\v2\x1f.scd.CountSubscriptionsRepoCallH\x00R\x1acountSubscriptionsRepoCallB\t\n" +
+	"\x1dcount_subscriptions_repo_call\x18\xa6\x01 \x01(\v2\x1f.scd.CountSubscriptionsRepoCallH\x00R\x1acountSubscriptionsRepoCall\x12c\n" +
+	"\x1dget_eviction_config_repo_call\x18\xb5\x01 \x01(\v2\x1e.scd.GetEvictionConfigRepoCallH\x00R\x19getEvictionConfigRepoCall\x12c\n" +
+	"\x1dset_eviction_config_repo_call\x18\xb6\x01 \x01(\v2\x1e.scd.SetEvictionConfigRepoCallH\x00R\x19setEvictionConfigRepoCallB\t\n" +
 	"\apayloadB&Z$github.com/interuss/dss/pkg/pb/scdpbb\x06proto3"
 
 var (
@@ -768,6 +803,8 @@ var file_scd_payload_proto_goTypes = []any{
 	(*IncrementNotificationIndicesForOperationalIntentsRepoCall)(nil), // 35: scd.IncrementNotificationIndicesForOperationalIntentsRepoCall
 	(*IncrementNotificationIndicesForConstraintsRepoCall)(nil),        // 36: scd.IncrementNotificationIndicesForConstraintsRepoCall
 	(*CountSubscriptionsRepoCall)(nil),                                // 37: scd.CountSubscriptionsRepoCall
+	(*GetEvictionConfigRepoCall)(nil),                                 // 38: scd.GetEvictionConfigRepoCall
+	(*SetEvictionConfigRepoCall)(nil),                                 // 39: scd.SetEvictionConfigRepoCall
 }
 var file_scd_payload_proto_depIdxs = []int32{
 	1,  // 0: scd.Payload.get_uss_availability_operation:type_name -> scd.GetUssAvailabilityOperation
@@ -807,11 +844,13 @@ var file_scd_payload_proto_depIdxs = []int32{
 	35, // 34: scd.Payload.increment_notification_indices_for_operational_intents_repo_call:type_name -> scd.IncrementNotificationIndicesForOperationalIntentsRepoCall
 	36, // 35: scd.Payload.increment_notification_indices_for_constraints_repo_call:type_name -> scd.IncrementNotificationIndicesForConstraintsRepoCall
 	37, // 36: scd.Payload.count_subscriptions_repo_call:type_name -> scd.CountSubscriptionsRepoCall
-	37, // [37:37] is the sub-list for method output_type
-	37, // [37:37] is the sub-list for method input_type
-	37, // [37:37] is the sub-list for extension type_name
-	37, // [37:37] is the sub-list for extension extendee
-	0,  // [0:37] is the sub-list for field type_name
+	38, // 37: scd.Payload.get_eviction_config_repo_call:type_name -> scd.GetEvictionConfigRepoCall
+	39, // 38: scd.Payload.set_eviction_config_repo_call:type_name -> scd.SetEvictionConfigRepoCall
+	39, // [39:39] is the sub-list for method output_type
+	39, // [39:39] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_scd_payload_proto_init() }
@@ -821,6 +860,7 @@ func file_scd_payload_proto_init() {
 	}
 	file_scd_availability_proto_init()
 	file_scd_constraint_proto_init()
+	file_scd_eviction_config_proto_init()
 	file_scd_operational_intents_proto_init()
 	file_scd_subscriptions_proto_init()
 	file_scd_payload_proto_msgTypes[0].OneofWrappers = []any{
@@ -861,6 +901,8 @@ func file_scd_payload_proto_init() {
 		(*Payload_IncrementNotificationIndicesForOperationalIntentsRepoCall)(nil),
 		(*Payload_IncrementNotificationIndicesForConstraintsRepoCall)(nil),
 		(*Payload_CountSubscriptionsRepoCall)(nil),
+		(*Payload_GetEvictionConfigRepoCall)(nil),
+		(*Payload_SetEvictionConfigRepoCall)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

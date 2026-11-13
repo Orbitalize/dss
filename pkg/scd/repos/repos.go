@@ -130,4 +130,5 @@ type Repository interface {
 	Subscription
 	Constraint
 	UssAvailability
+	EvictionConfig
 }
