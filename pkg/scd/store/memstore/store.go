@@ -31,6 +31,8 @@ type state struct {
 	OperationalIntents map[dssmodels.ID]*operationalIntentRecord
 	// Availabilities holds the stored USS availabilities keyed by USS Manager.
 	Availabilities map[dssmodels.Manager]*availabilityRecord
+	// EvictionConfig holds the eviction settings, nil until they are first set.
+	EvictionConfig *dssmodels.EvictionConfig
 }
 
 // constraintRecord is the in-memory representation of a Constraint. The
@@ -222,6 +224,7 @@ func (s state) clone() state {
 		Subscriptions:      subs,
 		OperationalIntents: ois,
 		Availabilities:     avails,
+		EvictionConfig:     s.EvictionConfig.Clone(),
 	}
 }
 

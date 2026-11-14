@@ -6,6 +6,8 @@ import (
 	restapi "github.com/interuss/dss/pkg/api/scdv1"
 	"github.com/interuss/dss/pkg/memstore"
 	dssmodels "github.com/interuss/dss/pkg/models"
+	modelspb "github.com/interuss/dss/pkg/pb"
+	"github.com/interuss/dss/pkg/pb/raftpb"
 	"github.com/interuss/dss/pkg/pb/scdpb"
 	"github.com/interuss/dss/pkg/raftstore"
 	"github.com/interuss/dss/pkg/raftstore/consensus"
@@ -19,10 +21,35 @@ import (
 	"go.uber.org/zap"
 )
 
+// Names of the entity types of the SCD group, for its eviction.
+const (
+	evictionOperationalIntents = "operational_intents"
+	evictionSubscriptions      = "subscriptions"
+)
+
 // repo is a full implementation of scd.repos.Repository for Raft-based storage.
 type repo struct {
 	consensus *consensus.Consensus
 	*memstore.Store[repos.Repository]
+	eviction *raftstore.Eviction
+}
+
+// newRepo returns the repo applying on memStore, with its eviction. Its consensus is set once Raft is initialized.
+func newRepo(memStore *memstore.Store[repos.Repository]) *repo {
+	memRepo := memStore.GetRepo()
+	return &repo{
+		Store: memStore,
+		eviction: raftstore.NewEviction(
+			func(req *modelspb.EvictionRequest) *raftpb.Payload {
+				return operations.ProposalPayload(&scdpb.Payload{Payload: &scdpb.Payload_EvictionRequest{EvictionRequest: req}})
+			},
+			map[string]raftstore.EntityEvictor{
+				evictionOperationalIntents: {DeleteExpired: memRepo.DeleteExpiredOperationalIntents, CountExpired: memRepo.CountExpiredOperationalIntents},
+				evictionSubscriptions:      {DeleteExpired: memRepo.DeleteExpiredSubscriptions, CountExpired: memRepo.CountExpiredSubscriptions},
+			},
+			memRepo,
+		),
+	}
 }
 
 func Init(ctx context.Context, logger *zap.Logger) (*raftstore.Store[repos.Repository], error) {
@@ -36,13 +63,14 @@ func Init(ctx context.Context, logger *zap.Logger) (*raftstore.Store[repos.Repos
 		return nil, stacktrace.Propagate(err, "failed to initialize scd memstore")
 	}
 
-	r := &repo{Store: memStore}
+	r := newRepo(memStore)
 	store, err := raftstore.Init(ctx, logger.With(zap.String("service", "scd")), params, r, operations.Registry)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "failed to initialize scd raftstore")
 	}
 
 	r.consensus = store.Consensus
+	r.eviction.Consensus = store.Consensus
 
 	return store, nil
 }
@@ -251,6 +279,10 @@ func (r *repo) Apply(ctx context.Context, proposal consensus.Proposal) (any, err
 
 	case *scdpb.Payload_CountSubscriptionsRepoCall:
 		return r.Store.GetRepo().CountSubscriptions(ctx)
+
+	// Store-wide repository requests
+	case *scdpb.Payload_EvictionRequest:
+		return r.eviction.Apply(ctx, payload.EvictionRequest)
 
 	default:
 		return nil, stacktrace.NewError("unknown request: %q", proposal.Name())
