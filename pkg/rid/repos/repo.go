@@ -6,4 +6,5 @@ package repos
 type Repository interface {
 	ISA
 	Subscription
+	EvictionConfig
 }

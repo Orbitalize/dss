@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package rid;
 
+import "eviction.proto";
 import "rid/isa.proto";
 import "rid/subscriptions.proto";
 
@@ -37,5 +38,8 @@ message Payload {
         UpdateNotificationIdxsInCellsRepoCall update_notification_idxs_in_cells_repo_call = 86;
         MaxSubscriptionCountInCellsByOwnerRepoCall max_subscription_count_in_cells_by_owner_repo_call = 87;
         CountSubscriptionsRepoCall count_subscriptions_repo_call = 88;
+
+        // Store-wide repository requests
+        models.EvictionRequest eviction_request = 100;
     }
 }
