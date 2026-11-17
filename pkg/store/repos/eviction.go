@@ -16,4 +16,7 @@ type Eviction interface {
 
 	// SetEvictionConfig replaces the eviction settings with config and returns the stored settings.
 	SetEvictionConfig(ctx context.Context, config dssmodels.EvictionConfig) (dssmodels.EvictionConfig, error)
+
+	// SetEvictionDisabled disables or enables the scheduled cleanup jobs, keeping the eviction settings.
+	SetEvictionDisabled(ctx context.Context, disabled bool) error
 }

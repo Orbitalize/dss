@@ -201,6 +201,16 @@ func (r *repo) Apply(ctx context.Context, proposal consensus.Proposal) (any, err
 		}
 		return stored, nil
 
+	case *ridpb.Payload_SetEvictionDisabledRepoCall:
+		if err := r.Store.GetRepo().SetEvictionDisabled(ctx, payload.SetEvictionDisabledRepoCall.GetDisabled()); err != nil {
+			return nil, err
+		}
+		select {
+		case r.evictionConfigC <- struct{}{}:
+		default:
+		}
+		return nil, nil
+
 	default:
 		return nil, stacktrace.NewError("unknown request: %q", proposal.Name())
 	}

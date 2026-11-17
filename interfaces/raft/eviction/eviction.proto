@@ -16,7 +16,7 @@ message Parameters {
 
 // Config contains the eviction settings of a Raft group, stored in its state: each group has its own.
 message Config {
-    // Time between two scheduled cleanup jobs, 0 disables them.
+    // Time between two scheduled cleanup jobs, positive.
     google.protobuf.Duration interval = 1;
     Parameters parameters = 2;
 }
@@ -34,4 +34,9 @@ message GetConfigRepoCall {}
 message SetConfigRepoCall {
     // Replaces the stored eviction settings.
     Config config = 1;
+}
+
+message SetDisabledRepoCall {
+    // Whether the scheduled cleanup jobs are disabled, independently of the eviction settings.
+    bool disabled = 1;
 }

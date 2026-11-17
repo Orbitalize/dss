@@ -19,3 +19,7 @@ func (r *repo) GetEvictionConfig(_ context.Context) (dssmodels.EvictionConfig, e
 func (r *repo) SetEvictionConfig(_ context.Context, _ dssmodels.EvictionConfig) (dssmodels.EvictionConfig, error) {
 	return dssmodels.EvictionConfig{}, stacktrace.NewErrorWithCode(dsserr.NotImplemented, "SetEvictionConfig not implemented for sqlstore")
 }
+
+func (r *repo) SetEvictionDisabled(_ context.Context, _ bool) error {
+	return stacktrace.NewErrorWithCode(dsserr.NotImplemented, "SetEvictionDisabled not implemented for sqlstore")
+}

@@ -17,7 +17,7 @@ const (
 // StartEviction runs the scheduled cleanup jobs of the group in the background, until ctx is done.
 // While this node is the leader, the jobs run according to the eviction settings of repo.
 // The schedule restarts when this node becomes the leader or when the settings are updated (configC is signaled) .
-// No job runs while this node is not the leader or the interval is 0.
+// No job runs while this node is not the leader or the scheduled jobs are disabled.
 func (s *Store[R]) StartEviction(ctx context.Context, repo storerepos.Eviction, configC <-chan struct{}) {
 	logger := s.logger.With(zap.String("component", "eviction"))
 	go func() {
@@ -57,7 +57,7 @@ func (s *Store[R]) StartEviction(ctx context.Context, repo storerepos.Eviction, 
 }
 
 // nextEviction returns a channel receiving when the next cleanup job is due, one interval after since,
-// or nil if this node is not the leader or the interval is 0.
+// or nil if this node is not the leader or the scheduled jobs are disabled.
 // If the settings can't be read, the timer is set to evictionRetryDelay.
 func nextEviction(ctx context.Context, logger *zap.Logger, repo storerepos.Eviction, leader bool, since time.Time) <-chan time.Time {
 	if !leader {
@@ -70,7 +70,7 @@ func nextEviction(ctx context.Context, logger *zap.Logger, repo storerepos.Evict
 		logger.Error("failed to get the eviction settings, retrying", zap.Error(err))
 		return time.After(evictionRetryDelay)
 	}
-	if config.Interval == 0 {
+	if config.Disabled {
 		return nil
 	}
 	return time.After(time.Until(since.Add(config.Interval)))

@@ -46,6 +46,42 @@ func (g *RaftGroup) SetEvictionConfig(ctx context.Context, config *restapi.Evict
 	}
 }
 
+// DisableEviction disables the scheduled cleanup jobs of the group and returns its eviction settings.
+func (g *RaftGroup) DisableEviction(ctx context.Context) (*restapi.EvictionConfig, error) {
+	resp, err := g.client.DisableEviction(ctx, g.name)
+	if err != nil {
+		return nil, stacktrace.Propagate(err, "failed to call the admin API at %s", g.socketPath)
+	}
+	switch {
+	case resp.Response200 != nil:
+		return resp.Response200, nil
+	case resp.Response404 != nil:
+		return nil, responseError(http.StatusNotFound, resp.Response404.Message)
+	case resp.Response500 != nil:
+		return nil, responseError(http.StatusInternalServerError, &resp.Response500.ErrorMessage)
+	default:
+		return nil, stacktrace.NewError("no response received from the admin API")
+	}
+}
+
+// EnableEviction enables the scheduled cleanup jobs of the group and returns its eviction settings.
+func (g *RaftGroup) EnableEviction(ctx context.Context) (*restapi.EvictionConfig, error) {
+	resp, err := g.client.EnableEviction(ctx, g.name)
+	if err != nil {
+		return nil, stacktrace.Propagate(err, "failed to call the admin API at %s", g.socketPath)
+	}
+	switch {
+	case resp.Response200 != nil:
+		return resp.Response200, nil
+	case resp.Response404 != nil:
+		return nil, responseError(http.StatusNotFound, resp.Response404.Message)
+	case resp.Response500 != nil:
+		return nil, responseError(http.StatusInternalServerError, &resp.Response500.ErrorMessage)
+	default:
+		return nil, stacktrace.NewError("no response received from the admin API")
+	}
+}
+
 // RunEviction runs a cleanup job on the group and returns the number of entities per entity type.
 func (g *RaftGroup) RunEviction(ctx context.Context, params *restapi.EvictionRunParameters) (*restapi.EvictionRunResult, error) {
 	resp, err := g.client.CreateEvictionRun(ctx, g.name, params)

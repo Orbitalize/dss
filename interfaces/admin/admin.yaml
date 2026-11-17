@@ -136,6 +136,11 @@ components:
           example: 1h
         parameters:
           $ref: '#/components/schemas/EvictionParameters'
+        disabled:
+          description: >-
+            Whether the scheduled cleanup jobs are disabled, with the `disable` and `enable` endpoints. Ignored when
+            replacing the settings.
+          type: boolean
 
     EvictionRunParameters:
       description: Parameters of a cleanup job run on demand.
@@ -417,11 +422,70 @@ paths:
                 $ref: '#/components/schemas/EvictionConfig'
         '400':
           description: >-
-            The request was not properly formed, e.g. an invalid duration, a negative interval, a non-positive TTL or a negative limit.
+            The request was not properly formed, e.g. an invalid duration, a non-positive interval or TTL or a negative limit.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: >-
+            This DSS node has no Raft group with this name or the group does not support eviction.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/v1/raft/groups/{group_name}/eviction/disable:
+    parameters:
+      - name: group_name
+        in: path
+        required: true
+        description: Name of the Raft group.
+        schema:
+          $ref: '#/components/schemas/RaftGroupName'
+    post:
+      summary: Disable the scheduled cleanup jobs of a Raft group
+      description: >-
+        The eviction settings are kept. The request returns once the change is adopted by the group.
+      operationId: disableEviction
+      tags: [ eviction ]
+      responses:
+        '200':
+          description: The scheduled cleanup jobs were disabled. The eviction settings are returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvictionConfig'
+        '404':
+          description: >-
+            This DSS node has no Raft group with this name or the group does not support eviction.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/v1/raft/groups/{group_name}/eviction/enable:
+    parameters:
+      - name: group_name
+        in: path
+        required: true
+        description: Name of the Raft group.
+        schema:
+          $ref: '#/components/schemas/RaftGroupName'
+    post:
+      summary: Enable the scheduled cleanup jobs of a Raft group
+      description: >-
+        The jobs run again according to the eviction settings. The request returns once the change is adopted by the
+        group.
+      operationId: enableEviction
+      tags: [ eviction ]
+      responses:
+        '200':
+          description: The scheduled cleanup jobs were enabled. The eviction settings are returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvictionConfig'
         '404':
           description: >-
             This DSS node has no Raft group with this name or the group does not support eviction.

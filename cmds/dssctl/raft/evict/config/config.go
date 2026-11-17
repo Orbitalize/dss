@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	restapi "github.com/interuss/dss/pkg/api/adminv1"
 	"github.com/spf13/cobra"
@@ -16,12 +15,12 @@ var Cmd = &cobra.Command{
 }
 
 func init() {
-	Cmd.AddCommand(getCmd, setCmd)
+	Cmd.AddCommand(getCmd, setCmd, disableCmd, enableCmd)
 }
 
 func formatConfig(config *restapi.EvictionConfig) string {
 	interval := config.Interval
-	if d, err := time.ParseDuration(interval); err == nil && d == 0 {
+	if config.Disabled != nil && *config.Disabled {
 		interval += " (scheduled cleanup jobs disabled)"
 	}
 	limit := "unlimited"

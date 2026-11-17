@@ -45,6 +45,7 @@ func (r *repo) GetSnapshot() (*raftpb.Snapshot, error) {
 	if r.state.EvictionConfig != nil {
 		snap.EvictionConfig = r.state.EvictionConfig.ToProto()
 	}
+	snap.EvictionDisabled = r.state.EvictionDisabled
 
 	return &raftpb.Snapshot{AppSnapshot: &raftpb.Snapshot_RidSnapshot{RidSnapshot: snap}}, nil
 }
@@ -97,6 +98,7 @@ func (r *repo) RestoreFromSnapshot(s *raftpb.Snapshot) error {
 			return stacktrace.Propagate(err, "invalid eviction config in snapshot")
 		}
 	}
+	restored.EvictionDisabled = snap.GetEvictionDisabled()
 
 	r.state = restored
 	return nil

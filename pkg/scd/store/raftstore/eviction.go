@@ -26,3 +26,10 @@ func (r *repo) SetEvictionConfig(ctx context.Context, config dssmodels.EvictionC
 		SetEvictionConfigRepoCall: &evictionpb.SetConfigRepoCall{Config: config.ToProto()},
 	}}))
 }
+
+func (r *repo) SetEvictionDisabled(ctx context.Context, disabled bool) error {
+	_, err := r.consensus.HandleWritePayload[any](ctx, operations.ProposalPayload(&scdpb.Payload{Payload: &scdpb.Payload_SetEvictionDisabledRepoCall{
+		SetEvictionDisabledRepoCall: &evictionpb.SetDisabledRepoCall{Disabled: disabled},
+	}}))
+	return err
+}

@@ -40,4 +40,6 @@ message Snapshot {
     map<string, Subscription> subscriptions = 3;
     // eviction_config holds the eviction settings, unset until they are first set: the defaults are used until then.
     eviction.Config eviction_config = 4;
+    // eviction_disabled holds whether the scheduled cleanup jobs are disabled.
+    bool eviction_disabled = 5;
 }

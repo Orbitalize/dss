@@ -121,6 +121,47 @@ func (s *Server) eviction(name restapi.RaftGroupName) (storerepos.Eviction, erro
 	return eviction, nil
 }
 
+func (s *Server) DisableEviction(ctx context.Context, req *restapi.DisableEvictionRequest) restapi.DisableEvictionResponseSet {
+	config, err := s.setEvictionDisabled(ctx, req.GroupName, true)
+	switch stacktrace.GetCode(err) {
+	case stacktrace.NoCode:
+		return restapi.DisableEvictionResponseSet{Response200: config}
+	case dsserr.NotFound:
+		return restapi.DisableEvictionResponseSet{Response404: &restapi.ErrorResponse{Message: dsserr.Handle(ctx, err)}}
+	default:
+		return restapi.DisableEvictionResponseSet{Response500: &api.InternalServerErrorBody{ErrorMessage: *dsserr.Handle(ctx, err)}}
+	}
+}
+
+func (s *Server) EnableEviction(ctx context.Context, req *restapi.EnableEvictionRequest) restapi.EnableEvictionResponseSet {
+	config, err := s.setEvictionDisabled(ctx, req.GroupName, false)
+	switch stacktrace.GetCode(err) {
+	case stacktrace.NoCode:
+		return restapi.EnableEvictionResponseSet{Response200: config}
+	case dsserr.NotFound:
+		return restapi.EnableEvictionResponseSet{Response404: &restapi.ErrorResponse{Message: dsserr.Handle(ctx, err)}}
+	default:
+		return restapi.EnableEvictionResponseSet{Response500: &api.InternalServerErrorBody{ErrorMessage: *dsserr.Handle(ctx, err)}}
+	}
+}
+
+// setEvictionDisabled disables or enables the scheduled cleanup jobs of the Raft group and returns its settings.
+func (s *Server) setEvictionDisabled(ctx context.Context, name restapi.RaftGroupName, disabled bool) (*restapi.EvictionConfig, error) {
+	eviction, err := s.eviction(name)
+	if err != nil {
+		return nil, err
+	}
+	if err := eviction.SetEvictionDisabled(ctx, disabled); err != nil {
+		return nil, stacktrace.Propagate(err, "Could not set whether the eviction of the %s raft group is disabled", name)
+	}
+	config, err := eviction.GetEvictionConfig(ctx)
+	if err != nil {
+		return nil, stacktrace.Propagate(err, "Could not get the eviction config of the %s raft group", name)
+	}
+	s.Logger.Info("set whether eviction is disabled", zap.String("group", string(name)), zap.Bool("disabled", disabled))
+	return toEvictionConfig(config), nil
+}
+
 func toEvictionConfig(config dssmodels.EvictionConfig) *restapi.EvictionConfig {
 	return &restapi.EvictionConfig{
 		Interval: config.Interval.String(),
@@ -128,14 +169,15 @@ func toEvictionConfig(config dssmodels.EvictionConfig) *restapi.EvictionConfig {
 			Ttl:   config.Parameters.TTL.String(),
 			Limit: new(int64(config.Parameters.Limit)),
 		},
+		Disabled: new(config.Disabled),
 	}
 }
 
 // fromEvictionConfig converts and validates config, or returns a dsserr.BadRequest error.
 func fromEvictionConfig(config *restapi.EvictionConfig) (dssmodels.EvictionConfig, error) {
 	interval, err := time.ParseDuration(config.Interval)
-	if err != nil || interval < 0 {
-		return dssmodels.EvictionConfig{}, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Invalid interval %q, expected a duration of 0 or more", config.Interval)
+	if err != nil || interval <= 0 {
+		return dssmodels.EvictionConfig{}, stacktrace.NewErrorWithCode(dsserr.BadRequest, "Invalid interval %q, expected a positive duration", config.Interval)
 	}
 	params, err := fromEvictionParameters(&config.Parameters)
 	if err != nil {
